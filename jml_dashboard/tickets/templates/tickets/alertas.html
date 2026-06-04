@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alertas JML - Tickets Pendientes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink-black: #0d1b2a;
+            --prussian-blue: #1b263b;
+            --dusk-blue: #415a77;
+            --dusty-denim: #778da9;
+            --alabaster-grey: #e0e1dd;
+            
+            --emerald-500: #10b981;
+            --amber-500: #f59e0b;
+            --red-500: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--alabaster-grey);
+            color: var(--ink-black);
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--ink-black) 0%, var(--prussian-blue) 100%);
+            color: white;
+            padding: 24px 0 28px;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 350px;
+            height: 350px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 50%;
+        }
+
+        header .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        header h1 {
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .header-subtitle {
+            font-size: 14px;
+            opacity: 0.85;
+            margin-top: 6px;
+            margin-left: 0;
+            display: block;
+        }
+
+        .nav-bar {
+            background: white;
+            border-bottom: 1px solid var(--dusty-denim);
+            padding: 12px 0;
+            margin-top: -18px;
+            margin-bottom: 28px;
+            box-shadow: 0 2px 8px rgba(13,27,42,0.08);
+            position: relative;
+            z-index: 2;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-links a {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 13px;
+            color: var(--dusk-blue);
+            background: var(--alabaster-grey);
+            transition: all 0.2s;
+        }
+
+        .nav-links a.active {
+            background: var(--prussian-blue);
+            color: white;
+        }
+
+        .nav-links a:not(.active):hover {
+            background: var(--dusk-blue);
+            color: white;
+        }
+
+        .nav-links a svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--dusty-denim);
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(13,27,42,0.06);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(13,27,42,0.1);
+        }
+
+        .stat-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--dusty-denim);
+            margin-bottom: 8px;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--ink-black);
+            line-height: 1;
+        }
+
+        .stat-card.joiner .stat-number {
+            color: var(--emerald-500);
+        }
+
+        .stat-card.mover .stat-number {
+            color: var(--amber-500);
+        }
+
+        .stat-card.leaver .stat-number {
+            color: var(--red-500);
+        }
+
+        .stat-card.cerrar .stat-number {
+            color: var(--prussian-blue);
+        }
+
+        .stat-card.padres .stat-number {
+            color: var(--dusk-blue);
+        }
+
+        .message-box {
+            margin: 24px 0;
+            padding: 16px 20px;
+            border-radius: 16px;
+            font-weight: 500;
+        }
+
+        .message-box.success {
+            background: rgba(16,185,129,0.14);
+            color: #065f46;
+            border: 1px solid rgba(16,185,129,0.3);
+        }
+
+        .message-box.error {
+            background: rgba(239,68,68,0.14);
+            color: #7f1d1d;
+            border: 1px solid rgba(239,68,68,0.3);
+        }
+
+        .message-box.info {
+            background: rgba(59,130,246,0.12);
+            color: #1d4ed8;
+            border: 1px solid rgba(59,130,246,0.25);
+        }
+
+        .filters-section {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--dusty-denim);
+            margin-bottom: 32px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(13,27,42,0.06);
+        }
+
+        .filters-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--alabaster-grey);
+            font-weight: 600;
+            color: var(--dusk-blue);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filters-header svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--dusty-denim);
+        }
+
+        .filters-body {
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 160px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--dusty-denim);
+            margin-bottom: 6px;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--dusty-denim);
+            border-radius: 10px;
+            font-size: 14px;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--prussian-blue);
+            box-shadow: 0 0 0 3px rgba(27,38,59,0.1);
+        }
+
+        .btn-reset {
+            padding: 10px 20px;
+            background: var(--alabaster-grey);
+            border: 1px solid var(--dusty-denim);
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--dusk-blue);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-reset:hover {
+            background: var(--dusty-denim);
+            color: white;
+        }
+
+        .btn-reset svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+        }
+
+        .tickets-section {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--dusty-denim);
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(13,27,42,0.06);
+        }
+
+        .tickets-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--alabaster-grey);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .tickets-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--ink-black);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tickets-header h2 svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--prussian-blue);
+        }
+
+        .alerta-card {
+            border-bottom: 1px solid var(--alabaster-grey);
+        }
+
+        .alerta-card:last-child {
+            border-bottom: none;
+        }
+
+        .alerta-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            gap: 16px;
+            flex-wrap: wrap;
+            transition: background 0.2s;
+        }
+
+        .alerta-header:hover {
+            background: rgba(13,27,42,0.02);
+        }
+
+        .alerta-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .severidad-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .severidad-badge.critica {
+            background: rgba(239,68,68,0.1);
+            color: var(--red-500);
+        }
+
+        .severidad-badge.alta {
+            background: rgba(239,68,68,0.1);
+            color: var(--red-500);
+        }
+
+        .severidad-badge.media {
+            background: rgba(245,158,11,0.1);
+            color: var(--amber-500);
+        }
+
+        .severidad-badge.baja {
+            background: rgba(120,140,170,0.1);
+            color: var(--dusty-denim);
+        }
+
+        .severidad-badge.cerrar {
+            background: rgba(16,185,129,0.1);
+            color: var(--emerald-500);
+        }
+
+        .tipo-badge {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .tipo-Joiner {
+            background: rgba(16,185,129,0.1);
+            color: var(--emerald-500);
+        }
+
+        .tipo-Mover {
+            background: rgba(245,158,11,0.1);
+            color: var(--amber-500);
+        }
+
+        .tipo-Leaver {
+            background: rgba(239,68,68,0.1);
+            color: var(--red-500);
+        }
+
+        .ticket-id {
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--prussian-blue);
+            background: rgba(27,38,59,0.08);
+            padding: 4px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ticket-id:hover {
+            background: rgba(27,38,59,0.15);
+        }
+
+        .nombre-persona {
+            font-weight: 600;
+            color: var(--ink-black);
+        }
+
+        .dias-badge {
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: var(--alabaster-grey);
+            color: var(--dusty-denim);
+        }
+
+        .dias-badge.critico {
+            background: rgba(239,68,68,0.1);
+            color: var(--red-500);
+        }
+
+        .flecha {
+            transition: transform 0.2s;
+            color: var(--dusty-denim);
+        }
+
+        .alerta-body {
+            display: none;
+            padding: 0 20px 20px 20px;
+            border-top: 1px solid var(--alabaster-grey);
+        }
+
+        .alerta-body.show {
+            display: block;
+        }
+
+        .description-box {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .description-box.critica {
+            background: rgba(239,68,68,0.08);
+            color: #7f1d1d;
+            border: 1px solid rgba(239,68,68,0.2);
+        }
+
+        .description-box.pendiente {
+            background: rgba(245,158,11,0.08);
+            color: #78350f;
+            border: 1px solid rgba(245,158,11,0.2);
+        }
+
+        .description-box.cerrar {
+            background: rgba(16,185,129,0.08);
+            color: #166534;
+            border: 1px solid rgba(16,185,129,0.2);
+        }
+
+        .subject-box {
+            background: var(--alabaster-grey);
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-family: monospace;
+            color: var(--dusty-denim);
+            margin-bottom: 16px;
+            word-break: break-all;
+        }
+
+        .cerrados-mensaje {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 999px;
+            color: #166534;
+            font-size: 12px;
+            font-weight: 600;
+            width: fit-content;
+            max-width: 100%;
+            white-space: nowrap;
+        }
+
+        .hijos-table-wrapper {
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+
+        .hijos-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .hijos-abiertos-badge,
+        .hijos-cerrados-badge {
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(27,38,59,0.08);
+            color: var(--prussian-blue);
+        }
+
+        .hijos-cerrados-badge {
+            background: rgba(16,185,129,0.1);
+            color: var(--emerald-500);
+        }
+
+        .cerrados-mensaje {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(16,185,129,0.1);
+            border: 1px solid rgba(16,185,129,0.2);
+            border-radius: 999px;
+            color: var(--emerald-500);
+            font-size: 12px;
+            font-weight: 600;
+            width: fit-content;
+            max-width: 100%;
+            white-space: nowrap;
+        }
+
+        .hijos-table th {
+            text-align: left;
+            padding: 10px;
+            background: var(--alabaster-grey);
+            font-weight: 600;
+            color: var(--dusk-blue);
+            border-bottom: 1px solid var(--dusty-denim);
+        }
+
+        .hijos-table td {
+            padding: 10px;
+            border-bottom: 1px solid rgba(120,140,170,0.1);
+        }
+
+        .hijo-id {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--prussian-blue);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .hijo-id:hover {
+            text-decoration: underline;
+        }
+
+        .estado-abierto {
+            color: var(--red-500);
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--dusty-denim);
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            stroke: rgba(120,140,170,0.3);
+            margin-bottom: 16px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--ink-black);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(13,27,42,0.2);
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--emerald-500);
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .filters-body {
+                flex-direction: column;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+
+            .alerta-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="header-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 8v4l3 3M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
+                        <path d="M12 6v2" />
+                    </svg>
+                </div>
+                <div>
+                    <h1>JML Alerts</h1>
+                    <div class="header-subtitle">Gestión de Joiners, Movers y Leavers</div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="nav-bar">
+        <div class="container">
+            <div class="nav-links">
+                <a href="{% url 'alertas' %}" class="active">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                    </svg>
+                    Alertas
+                </a>
+                <a href="{% url 'upload_csv' %}">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Subir CSV
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">Total Tickets</div>
+                <div class="stat-number">{{ total_tickets }}</div>
+            </div>
+            <div class="stat-card padres">
+                <div class="stat-title">Tickets Padre</div>
+                <div class="stat-number">{{ total_padres }}</div>
+            </div>
+            <div class="stat-card joiner">
+                <div class="stat-title">Joiners</div>
+                <div class="stat-number">{{ joiners }}</div>
+            </div>
+            <div class="stat-card mover">
+                <div class="stat-title">Movers</div>
+                <div class="stat-number">{{ movers }}</div>
+            </div>
+            <div class="stat-card leaver">
+                <div class="stat-title">Leavers</div>
+                <div class="stat-number">{{ leavers }}</div>
+            </div>
+            <div class="stat-card cerrar">
+                <div class="stat-title">Listos para cerrar</div>
+                <div class="stat-number">{{ total_cerrar }}</div>
+            </div>
+        </div>
+        {% if messages %}
+            <div class="message-area">
+                {% for message in messages %}
+                    <div class="message-box {{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="filters-section">
+            <div class="filters-header">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+                Filtros
+            </div>
+            <div class="filters-body">
+                <div class="filter-group"><label>Buscar</label><input type="text" id="searchInput"
+                        placeholder="ID, persona o subject..."></div>
+                <div class="filter-group"><label>Tipo</label><select id="typeFilter">
+                        <option value="">Todos</option>
+                        <option value="Joiner">Joiners</option>
+                        <option value="Mover">Movers</option>
+                        <option value="Leaver">Leavers</option>
+                    </select></div>
+                <div class="filter-group"><label>Estado</label><select id="statusFilter">
+                        <option value="">Todos</option>
+                        <option value="critica">Crítica (Leaver >24h)</option>
+                        <option value="alta">Alta</option>
+                        <option value="media">Media</option>
+                        <option value="baja">Baja</option>
+                    </select></div>
+                <div class="filter-group"><label>Desde</label><input type="date" id="fechaDesde"></div>
+                <div class="filter-group"><label>Hasta</label><input type="date" id="fechaHasta"></div>
+                <div class="filter-group"><label>Mostrar solo</label><select id="cerrarFilter">
+                        <option value="">Todos</option>
+                        <option value="si">Listos para cerrar</option>
+                    </select></div>
+                <button class="btn-reset" id="resetFilters"><svg viewBox="0 0 24 24">
+                        <path d="M3 6h18M9 12h6M12 18h0" />
+                        <path d="M12 2a10 10 0 1 0 10 10" />
+                    </svg>Limpiar</button>
+            </div>
+        </div>
+        <div class="tickets-section">
+            <div class="tickets-header">
+                <h2><svg viewBox="0 0 24 24">
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <line x1="2" y1="10" x2="22" y2="10" />
+                    </svg>Tickets de Alerta</h2>
+            </div>
+            <div id="ticketsContainer">
+                {% for ticket in todas_las_alertas %}
+                <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}" data-severidad="{{ ticket.severidad }}"
+                    data-fecha="{{ ticket.padre.created_time }}" data-id="{{ ticket.padre.request_id }}">
+                    <div class="alerta-header" onclick="toggleBody(this)">
+                        <div class="alerta-info">
+                            <span class="severidad-badge {{ ticket.severidad }}">
+                                {% if ticket.severidad == 'critica' %}CRÍTICA
+                                {% elif ticket.severidad == 'alta' %}ALTA
+                                {% elif ticket.severidad == 'media' %}MEDIA
+                                {% elif ticket.severidad == 'baja' %}BAJA
+                                {% else %}CERRAR{% endif %}
+                            </span>
+                            <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
+                            <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
+                            <span class="nombre-persona">{{ ticket.nombre }}</span>
+                            {% if ticket.hijos_pendientes > 0 %}
+                            <span class="hijos-abiertos-badge">{{ ticket.hijos_pendientes }} abiertos</span>
+                            {% endif %}
+                            {% if ticket.hijos_cerrados_count > 0 %}
+                            <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <span class="dias-badge {% if ticket.dias_abierto > 1 %}critico{% endif %}">{{ ticket.dias_abierto }} días</span>
+                            <span class="flecha">▼</span>
+                        </div>
+                    </div>
+                    <div class="alerta-body">
+                        <div
+                            class="description-box {% if ticket.severidad == 'critica' %}critica{% else %}pendiente{% endif %}">
+                            <strong>{{ ticket.mensaje }}</strong>
+                            {% if ticket.dias_limite %}<br><small>Límite: {{ ticket.dias_limite }} días</small>{% endif %}
+                        </div>
+                        <div class="subject-box">{{ ticket.subject_completo }}</div>
+                        {% if ticket.hijos %}
+                        <div class="hijos-table-wrapper">
+                            <table class="hijos-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Subject</th>
+                                        <th>Estado</th>
+                                        <th>Técnico</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for hijo in ticket.hijos %}
+                                    <tr>
+                                        <td><span class="hijo-id" onclick="copyId(event, '{{ hijo.request_id }}')">
+                                            {{ hijo.request_id }}</span></td>
+                                        <td>{{ hijo.subject|truncatechars:60 }}</td>
+                                        <td class="estado-abierto">{{ hijo.request_status }}</td>
+                                        <td>{{ hijo.technician|default:"—" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% if ticket.hijos_cerrados_count > 0 %}
+                        <div class="cerrados-mensaje">
+                            <svg viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) ya están cerrados
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <p>No hay tickets pendientes</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast">
+        <svg viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12" />
+        </svg>
+        <span>ID copiado</span>
+    </div>
+    <script>
+        function toggleBody(header) {
+            const body = header.nextElementSibling;
+            const flecha = header.querySelector('.flecha');
+            body.classList.toggle('show');
+            flecha.style.transform = body.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+        function copyId(event, id) {
+            event.stopPropagation();
+            navigator.clipboard.writeText(id);
+            const toast = document.getElementById('toast');
+            toast.querySelector('span').innerText = `ID ${id} copiado`;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const tipo = document.getElementById('typeFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const soloCerrar = document.getElementById('cerrarFilter').value;
+            const cards = document.querySelectorAll('.alerta-card');
+            cards.forEach(card => {
+                const tipoCard = card.querySelector('.tipo-badge')?.innerText || '';
+                const severidadCard = card.querySelector('.severidad-badge')?.classList[1] || '';
+                const tipoAlerta = card.dataset.tipoAlerta || '';
+                const textCard = card.innerText.toLowerCase();
+                const isCerrar = severidadCard === 'cerrar' || tipoAlerta === 'cerrar_manual';
+                let show = true;
+                if (search && !textCard.includes(search)) show = false;
+                if (tipo && tipoCard !== tipo) show = false;
+                if (status && severidadCard !== status) show = false;
+                if (soloCerrar === 'si' && !isCerrar) show = false;
+                card.style.display = show ? '' : 'none';
+            });
+        }
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('typeFilter').addEventListener('change', applyFilters);
+        document.getElementById('statusFilter').addEventListener('change', applyFilters);
+        document.getElementById('cerrarFilter').addEventListener('change', applyFilters);
+        document.getElementById('resetFilters').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('typeFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('cerrarFilter').value = '';
+            document.querySelectorAll('.alerta-card').forEach(card => card.style.display = '');
+        });
+    </script>
+</body>
+
+</html>

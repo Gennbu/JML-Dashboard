@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargar CSV - JML Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink-black: #0d1b2a;
+            --prussian-blue: #1b263b;
+            --dusk-blue: #415a77;
+            --dusty-denim: #778da9;
+            --alabaster-grey: #e0e1dd;
+            
+            --emerald-500: #10b981;
+            --amber-500: #f59e0b;
+            --red-500: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--alabaster-grey);
+            color: var(--ink-black);
+            line-height: 1.6;
+            font-size: 14px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--ink-black) 0%, var(--prussian-blue) 100%);
+            color: white;
+            padding: 32px 0 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 350px;
+            height: 350px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 50%;
+        }
+
+        header .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* Nav */
+        .nav-bar {
+            background: white;
+            border-bottom: 1px solid var(--dusty-denim);
+            padding: 16px 0;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(13,27,42,0.08);
+        }
+
+        .nav-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 13px;
+            color: var(--dusk-blue);
+            background: var(--alabaster-grey);
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--prussian-blue);
+            color: white;
+        }
+
+        .nav-link svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Card */
+        .upload-card {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid var(--dusty-denim);
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(13,27,42,0.08);
+        }
+
+        .card-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--alabaster-grey);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .card-header-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--alabaster-grey);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-header-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--prussian-blue);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .card-header h2 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--ink-black);
+        }
+
+        .card-header p {
+            font-size: 13px;
+            color: var(--dusty-denim);
+            margin-top: 2px;
+        }
+
+        .card-body {
+            padding: 28px;
+        }
+
+        /* Dropzone */
+        .dropzone {
+            border: 2px dashed var(--dusty-denim);
+            border-radius: 16px;
+            padding: 40px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            background: var(--alabaster-grey);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dropzone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--alabaster-grey) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+
+        .dropzone:hover {
+            border-color: var(--prussian-blue);
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(13,27,42,0.1);
+        }
+
+        .dropzone:hover::before {
+            opacity: 1;
+        }
+
+        .dropzone.dragover {
+            border-color: var(--prussian-blue);
+            background: rgba(27,38,59,0.05);
+            box-shadow: 0 0 0 4px rgba(27,38,59,0.1);
+        }
+
+        .dropzone-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .dropzone-icon {
+            width: 56px;
+            height: 56px;
+            background: white;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(13,27,42,0.08);
+            border: 1px solid var(--alabaster-grey);
+        }
+
+        .dropzone-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--prussian-blue);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .dropzone h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ink-black);
+            margin-bottom: 6px;
+        }
+
+        .dropzone p {
+            font-size: 13px;
+            color: var(--dusty-denim);
+        }
+
+        .dropzone .format-hint {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 4px 12px;
+            background: white;
+            border-radius: 20px;
+            font-size: 11px;
+            color: var(--dusk-blue);
+            font-weight: 500;
+            border: 1px solid var(--dusty-denim);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Selected File */
+        .selected-file {
+            margin-top: 16px;
+            padding: 14px 16px;
+            background: rgba(16,185,129,0.1);
+            border: 1px solid rgba(16,185,129,0.2);
+            border-radius: 12px;
+            color: var(--emerald-500);
+            font-size: 13px;
+            font-weight: 500;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .selected-file.show {
+            display: flex;
+        }
+
+        .selected-file svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--emerald-500);
+            stroke-width: 2.5;
+            fill: none;
+            flex-shrink: 0;
+        }
+
+        /* Warning Box */
+        .warning-box {
+            background: rgba(245,158,11,0.08);
+            border: 1px solid rgba(245,158,11,0.15);
+            border-radius: 14px;
+            padding: 20px;
+            margin: 24px 0;
+            transition: all 0.2s;
+        }
+
+        .warning-box:hover {
+            border-color: rgba(245,158,11,0.3);
+        }
+
+        .warning-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .warning-icon {
+            width: 20px;
+            height: 20px;
+            background: rgba(245,158,11,0.15);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .warning-icon svg {
+            width: 12px;
+            height: 12px;
+            stroke: var(--amber-500);
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .warning-box label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--amber-500);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .warning-box input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--amber-500);
+            border-radius: 4px;
+        }
+
+        .warning-desc {
+            font-size: 12px;
+            color: var(--amber-500);
+            margin-top: 8px;
+            margin-left: 30px;
+            line-height: 1.5;
+            opacity: 0.85;
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--prussian-blue) 0%, var(--dusk-blue) 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(27,38,59,0.3);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(27,38,59,0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        /* Info Cards */
+        .info-section {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .info-card {
+            background: white;
+            border: 1px solid var(--dusty-denim);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .info-card-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--alabaster-grey);
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .info-card-icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--prussian-blue);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .info-card h4 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-black);
+            margin-bottom: 2px;
+        }
+
+        .info-card p {
+            font-size: 11px;
+            color: var(--dusty-denim);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .info-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container">
+        <div class="header-content">
+            <div class="header-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+            </div>
+            <h1>Cargar CSV</h1>
+        </div>
+    </div>
+</header>
+
+<div class="nav-bar">
+    <div class="container">
+        <a href="{% url 'alertas' %}" class="nav-link">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Volver a Alertas
+        </a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="upload-card">
+        <div class="card-header">
+            <div class="card-header-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Importar archivo CSV</h2>
+                <p>Sube el archivo de tickets para analizar alertas</p>
+            </div>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+                {% csrf_token %}
+
+                <div class="dropzone" id="dropzone" onclick="document.getElementById('csv_file').click()">
+                    <div class="dropzone-content">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                        </div>
+                        <h3>Arrastra o haz clic para seleccionar</h3>
+                        <p>Suelta tu archivo aquí o explora desde tu equipo</p>
+                        <span class="format-hint">.csv separado por comas</span>
+                    </div>
+                </div>
+
+                <input type="file" name="csv_file" id="csv_file" accept=".csv" required onchange="showSelectedFile()">
+
+                <div id="selectedFile" class="selected-file">
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span id="fileName"></span>
+                </div>
+
+                <div class="warning-box">
+                    <div class="warning-header">
+                        <div class="warning-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                        <label>
+                            <input type="checkbox" name="limpiar_bd" value="1" id="limpiarBD">
+                            Borrar base de datos antes de subir
+                        </label>
+                    </div>
+                    <div class="warning-desc">Elimina todos los tickets existentes y carga desde cero. Esta acción no se puede deshacer.</div>
+                </div>
+
+                <div class="warning-box" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.15);">
+                    <div class="warning-header" style="color: #10b981;">
+                        <div class="warning-icon" style="background: rgba(16,185,129,0.15);">
+                            <svg viewBox="0 0 24 24" style="stroke: #10b981;">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22 6 12 13 2 6"/>
+                            </svg>
+                        </div>
+                        <label style="color: #10b981;">
+                            <input type="checkbox" name="enviar_correo" value="1" id="enviarCorreo">
+                            Enviar correo con reporte
+                        </label>
+                    </div>
+                    <div class="warning-desc" style="color: #10b981;">Recibirás un correo con la lista de tickets listos para cerrar.</div>
+                    <div style="margin-top: 12px; display: none;" id="emailGroup">
+                        <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #10b981; margin-bottom: 6px;">Email destino</label>
+                        <input type="email" name="email_destino" id="emailDestino" placeholder="tu_email@gmail.com" style="width: 100%; padding: 10px 12px; border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; font-size: 14px;">
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Subir CSV
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <div class="info-card">
+            <div class="info-card-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+            </div>
+            <h4>Formato CSV</h4>
+            <p>Separado por comas estándar</p>
+        </div>
+        <div class="info-card">
+            <div class="info-card-icon">
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+            </div>
+            <h4>Análisis automático</h4>
+            <p>Detecta tickets padre e hijos</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showSelectedFile() {
+        const fileInput = document.getElementById('csv_file');
+        const fileDiv = document.getElementById('selectedFile');
+        const fileNameSpan = document.getElementById('fileName');
+
+        if (fileInput.files.length > 0) {
+            fileNameSpan.textContent = fileInput.files[0].name;
+            fileDiv.classList.add('show');
+        } else {
+            fileDiv.classList.remove('show');
+        }
+    }
+
+    // Drag & Drop
+    const dropzone = document.getElementById('dropzone');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => dropzone.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => dropzone.classList.remove('dragover'), false);
+    });
+
+    dropzone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        document.getElementById('csv_file').files = files;
+        showSelectedFile();
+    }
+
+    // Confirmación antes de limpiar BD
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        const limpiarCheckbox = document.getElementById('limpiarBD');
+        if (limpiarCheckbox.checked) {
+            if (!confirm('⚠️ ADVERTENCIA: Esto ELIMINARÁ TODOS los tickets existentes. ¿Estás seguro de continuar?')) {
+                e.preventDefault();
+            }
+        }
+    });
+
+    // Toggle email field cuando se marca "Enviar correo"
+    const enviarCorreoCheckbox = document.getElementById('enviarCorreo');
+    const emailGroup = document.getElementById('emailGroup');
+    const emailDestino = document.getElementById('emailDestino');
+
+    enviarCorreoCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            emailGroup.style.display = 'block';
+            emailDestino.required = true;
+        } else {
+            emailGroup.style.display = 'none';
+            emailDestino.required = false;
+        }
+    });
+
+    // Validar email antes de enviar
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        if (document.getElementById('enviarCorreo').checked) {
+            const email = document.getElementById('emailDestino').value.trim();
+            if (!email || !email.includes('@')) {
+                alert('Por favor ingresa un email válido');
+                e.preventDefault();
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
