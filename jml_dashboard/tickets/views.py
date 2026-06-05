@@ -5,11 +5,34 @@ from django.db.models import Q
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 import pandas as pd
 import re
 from .models import Ticket
 from collections import defaultdict
 from datetime import date
+
+
+def parse_destinatarios_email(destinatario_email):
+    if not destinatario_email:
+        return []
+
+    if isinstance(destinatario_email, str):
+        destinatarios = [email.strip() for email in destinatario_email.split(',') if email.strip()]
+    elif isinstance(destinatario_email, (list, tuple)):
+        destinatarios = [str(email).strip() for email in destinatario_email if email and str(email).strip()]
+    else:
+        return []
+
+    emails_validos = []
+    for email in destinatarios:
+        try:
+            validate_email(email)
+            emails_validos.append(email)
+        except ValidationError:
+            continue
+    return emails_validos
 
 # ========== UTILIDADES ==========
 
@@ -127,13 +150,17 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         </html>
         """
         
-        print(f"Enviando correo a {destinatario_email} desde {settings.EMAIL_HOST_USER} usando SMTP {settings.EMAIL_HOST}:{settings.EMAIL_PORT}")
+        destinatarios = parse_destinatarios_email(destinatario_email)
+        if not destinatarios:
+            return False, 'No se proporcionó ningún correo válido. Debes ingresar uno o más emails separados por coma.'
+
+        print(f"Enviando correo a {destinatarios} desde {settings.EMAIL_HOST_USER} usando SMTP {settings.EMAIL_HOST}:{settings.EMAIL_PORT}")
         # Enviar correo
         send_mail(
             subject=f'JML Dashboard - {len(tickets_cerrar)} tickets listos para cerrar',
             message='Por favor abre este correo en un cliente que soporte HTML.',
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[destinatario_email],
+            recipient_list=destinatarios,
             html_message=html_content,
             fail_silently=False,
         )

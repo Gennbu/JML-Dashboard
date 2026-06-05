@@ -1,0 +1,17 @@
+asgiref==3.10.0
+certifi==2026.5.20
+charset-normalizer==3.4.7
+Django==5.2.7
+django-anymail==15.0
+idna==3.18
+numpy==2.4.3
+pandas==3.0.1
+psycopg2-binary==2.9.11
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+pytz==2026.2
+requests==2.34.2
+six==1.17.0
+sqlparse==0.5.3
+tzdata==2025.2
+urllib3==2.7.0

@@ -34,16 +34,14 @@
         }
 
         .container {
-            max-width: 560px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 0 24px;
         }
-
-        /* Header */
         header {
             background: linear-gradient(135deg, var(--ink-black) 0%, var(--prussian-blue) 100%);
             color: white;
-            padding: 32px 0 40px;
+            padding: 24px 0 28px;
             position: relative;
             overflow: hidden;
         }
@@ -90,7 +88,7 @@
         }
 
         header h1 {
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 700;
             letter-spacing: -0.5px;
         }
@@ -580,8 +578,9 @@
                     </div>
                     <div class="warning-desc" style="color: #10b981;">Recibirás un correo con la lista de tickets listos para cerrar.</div>
                     <div style="margin-top: 12px; display: none;" id="emailGroup">
-                        <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #10b981; margin-bottom: 6px;">Email destino</label>
-                        <input type="email" name="email_destino" id="emailDestino" placeholder="tu_email@gmail.com" style="width: 100%; padding: 10px 12px; border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; font-size: 14px;">
+                        <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #10b981; margin-bottom: 6px;">Emails destino</label>
+                        <input type="email" name="email_destino" id="emailDestino" multiple placeholder="correo1@example.com, correo2@example.com" style="width: 100%; padding: 10px 12px; border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; font-size: 14px;">
+                        <small style="display:block;margin-top:6px;font-size:12px;color:#0f5132;">Puedes enviar a varios correos separados por coma.</small>
                     </div>
                 </div>
 
@@ -671,7 +670,7 @@
     document.getElementById('uploadForm').addEventListener('submit', function(e) {
         const limpiarCheckbox = document.getElementById('limpiarBD');
         if (limpiarCheckbox.checked) {
-            if (!confirm('⚠️ ADVERTENCIA: Esto ELIMINARÁ TODOS los tickets existentes. ¿Estás seguro de continuar?')) {
+            if (!confirm('ADVERTENCIA: Esto ELIMINARÁ TODOS los tickets existentes. ¿Estás seguro de continuar?')) {
                 e.preventDefault();
             }
         }
@@ -695,9 +694,10 @@
     // Validar email antes de enviar
     document.getElementById('uploadForm').addEventListener('submit', function(e) {
         if (document.getElementById('enviarCorreo').checked) {
-            const email = document.getElementById('emailDestino').value.trim();
-            if (!email || !email.includes('@')) {
-                alert('Por favor ingresa un email válido');
+            const rawEmails = document.getElementById('emailDestino').value.trim();
+            const emails = rawEmails.split(',').map(email => email.trim()).filter(Boolean);
+            if (emails.length === 0 || emails.some(email => !email.includes('@') || !email.includes('.'))) {
+                alert('Por favor ingresa uno o más correos válidos, separados por coma.');
                 e.preventDefault();
             }
         }

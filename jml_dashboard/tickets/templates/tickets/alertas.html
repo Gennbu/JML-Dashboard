@@ -802,7 +802,7 @@
             <div id="ticketsContainer">
                 {% for ticket in todas_las_alertas %}
                 <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}" data-severidad="{{ ticket.severidad }}"
-                    data-fecha="{{ ticket.padre.created_time }}" data-id="{{ ticket.padre.request_id }}">
+                    data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}" data-id="{{ ticket.padre.request_id }}">
                     <div class="alerta-header" onclick="toggleBody(this)">
                         <div class="alerta-info">
                             <span class="severidad-badge {{ ticket.severidad }}">
@@ -907,6 +907,8 @@
             const search = document.getElementById('searchInput').value.toLowerCase();
             const tipo = document.getElementById('typeFilter').value;
             const status = document.getElementById('statusFilter').value;
+            const fechaDesde = document.getElementById('fechaDesde').value;
+            const fechaHasta = document.getElementById('fechaHasta').value;
             const soloCerrar = document.getElementById('cerrarFilter').value;
             const cards = document.querySelectorAll('.alerta-card');
             cards.forEach(card => {
@@ -920,6 +922,14 @@
                 if (tipo && tipoCard !== tipo) show = false;
                 if (status && severidadCard !== status) show = false;
                 if (soloCerrar === 'si' && !isCerrar) show = false;
+                // Filtrado por fecha (data-fecha en formato YYYY-MM-DD)
+                const fechaCard = card.dataset.fecha || '';
+                if (fechaDesde && fechaCard) {
+                    if (fechaCard < fechaDesde) show = false;
+                }
+                if (fechaHasta && fechaCard) {
+                    if (fechaCard > fechaHasta) show = false;
+                }
                 card.style.display = show ? '' : 'none';
             });
         }
@@ -927,11 +937,15 @@
         document.getElementById('typeFilter').addEventListener('change', applyFilters);
         document.getElementById('statusFilter').addEventListener('change', applyFilters);
         document.getElementById('cerrarFilter').addEventListener('change', applyFilters);
+        document.getElementById('fechaDesde').addEventListener('change', applyFilters);
+        document.getElementById('fechaHasta').addEventListener('change', applyFilters);
         document.getElementById('resetFilters').addEventListener('click', () => {
             document.getElementById('searchInput').value = '';
             document.getElementById('typeFilter').value = '';
             document.getElementById('statusFilter').value = '';
             document.getElementById('cerrarFilter').value = '';
+            document.getElementById('fechaDesde').value = '';
+            document.getElementById('fechaHasta').value = '';
             document.querySelectorAll('.alerta-card').forEach(card => card.style.display = '');
         });
     </script>
