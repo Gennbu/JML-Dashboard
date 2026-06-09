@@ -1,12 +1,13 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib import messages
-from django.db.models import Q, Count, Case, When, Value, IntegerField
+from django.db.models import Q
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.db import connection
 import pandas as pd
 import re
 from .models import Ticket
@@ -33,8 +34,6 @@ def parse_destinatarios_email(destinatario_email):
     return emails_validos
 
 
-# ========== UTILIDADES ==========
-
 def extraer_nombre(subject):
     nombre = re.sub(r'^(Joiner|Mover|Leaver)\s+Notification\s+', '', subject, flags=re.IGNORECASE)
     nombre = re.sub(r'\s+\d{1,2}-\d{1,2}-\d{4}$', '', nombre)
@@ -58,7 +57,6 @@ def calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes, resol
 
     es_nz_au = es_nz_o_australia(padre.subject)
 
-    # Primero: verificar si todos los hijos están cerrados (prioridad máxima para cerrar)
     if total_hijos > 0 and hijos_pendientes == 0:
         return {
             'tipo_jml': tipo_jml,
@@ -68,7 +66,6 @@ def calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes, resol
             'mensaje': 'Todos los hijos cerrados - Cerrar padre manualmente'
         }
 
-    # Segundo: verificar si hay hijos pendientes
     if hijos_pendientes > 0:
         return {
             'tipo_jml': tipo_jml,
@@ -78,7 +75,6 @@ def calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes, resol
             'mensaje': f'{hijos_pendientes} tareas pendientes'
         }
 
-    # Tercero: validar por tipo y días
     if tipo_jml == 'Leaver':
         if es_nz_au:
             if dias_abierto > 3:
@@ -134,27 +130,22 @@ def calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes, resol
 
 
 def obtener_alertas_padre_listos_para_cerrar():
-    """Optimizado: usa consultas directas de Django"""
     hoy = timezone.now().date()
     
-    # Estados que consideramos cerrados
     estados_cerrados = ['closed', 'resolved', 'cerrado', 'completed', 'cancelled', 'cancelado']
     
-    # Obtener padres abiertos (excluyendo cerrados)
     padres = Ticket.objects.filter(
         Q(linked_request_id__isnull=True) | Q(linked_request_id='')
     ).exclude(
         request_status__in=estados_cerrados
     )
     
-    # Obtener todos los hijos con sus padres
     hijos = Ticket.objects.exclude(
         Q(linked_request_id__isnull=True) | Q(linked_request_id='')
     ).exclude(
         request_status__in=estados_cerrados
     )
     
-    # Crear diccionario de hijos por padre
     hijos_por_padre = defaultdict(list)
     for hijo in hijos:
         if hijo.linked_request_id:
@@ -168,8 +159,6 @@ def obtener_alertas_padre_listos_para_cerrar():
         if not todos_hijos:
             continue
         
-        # Contar hijos cerrados (que no están en la lista de hijos abiertos)
-        # Como ya filtramos hijos cerrados, todos los que están aquí son abiertos
         hijos_cerrados_count = Ticket.objects.filter(
             linked_request_id=padre.request_id,
             request_status__in=estados_cerrados
@@ -178,7 +167,6 @@ def obtener_alertas_padre_listos_para_cerrar():
         hijos_abiertos_count = len(todos_hijos)
         
         if hijos_abiertos_count == 0 and hijos_cerrados_count > 0:
-            # Calcular días abierto
             if hasattr(padre.created_time, 'date'):
                 dias_abierto = (hoy - padre.created_time.date()).days
             else:
@@ -217,7 +205,6 @@ def obtener_alertas_padre_listos_para_cerrar():
 
 
 def enviar_correo_tickets_cerrar(destinatario_email=None):
-    """Envía correo con lista de tickets listos para cerrar"""
     if not destinatario_email:
         destinatario_email = settings.EMAIL_HOST_USER
     
@@ -228,7 +215,6 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         cerrar_manual_resto, cerrar_manual_nz_au = obtener_alertas_padre_listos_para_cerrar()
         tickets_cerrar = cerrar_manual_resto + cerrar_manual_nz_au
         
-        # Generar contenido HTML (igual que antes)
         html_content = f"""
         <html>
         <head>
@@ -255,9 +241,9 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         <div class="container">
         <div class="header"><h1>Reporte de Tickets Listos para Cerrar</h1></div>
         <div class="stat-box"><div class="stat-number">{len(tickets_cerrar)}</div><div>Listos para cerrar</div></div>
-        <p style="font-size:12px;color:#666666;margin-top:8px;">Este correo solo incluye tickets padre que tienen todos sus hijos cerrados y están listos para cierre manual.</p>
+        <p style="font-size:12px;color:#666666;margin-top:8px;">Este correo solo incluye tickets padre que tienen todos sus hijos cerrados y estan listos para cierre manual.</p>
         <table class="data-table">
-        <thead><tr><th>ID Ticket</th><th>Nombre</th><th>Tipo</th><th>Días Abierto</th><th>Hijos Cerrados</th></tr></thead>
+        <thead><tr><th>ID Ticket</th><th>Nombre</th><th>Tipo</th><th>Dias Abierto</th><th>Hijos Cerrados</th></tr></thead>
         <tbody>
         """
         for ticket in tickets_cerrar:
@@ -276,7 +262,7 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         html_content += f"""
         </tbody>
         </table>
-        <div class="footer"><p>Este es un correo automático generado por JML Dashboard.</p><p>Generado el: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}</p></div>
+        <div class="footer"><p>Este es un correo automatico generado por JML Dashboard.</p><p>Generado el: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}</p></div>
         </div>
         </body>
         </html>
@@ -284,7 +270,7 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         
         destinatarios = parse_destinatarios_email(destinatario_email)
         if not destinatarios:
-            return False, 'No se proporcionó ningún correo válido.'
+            return False, 'No se proporciono ningun correo valido.'
         
         send_mail(
             subject=f'JML Dashboard - {len(tickets_cerrar)} tickets listos para cerrar',
@@ -299,20 +285,20 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         return False, str(e)
 
 
-# ========== VISTAS ==========
-
 def upload_csv(request):
     if request.method == 'POST' and request.FILES.get('csv_file'):
         csv_file = request.FILES['csv_file']
         
         if request.POST.get('limpiar_bd') == '1':
-            Ticket.objects.all().delete()
+            with connection.cursor() as cursor:
+                cursor.execute('DELETE FROM tickets_ticket')
+                cursor.execute('DELETE FROM sqlite_sequence WHERE name="tickets_ticket"')
         
         try:
             chunks = pd.read_csv(
                 csv_file,
                 skiprows=5,
-                chunksize=2000,
+                chunksize=1000,
                 dtype={
                     'RequestID': str,
                     'Linked Request ID': str,
@@ -333,80 +319,76 @@ def upload_csv(request):
         total = 0
         for chunk in chunks:
             tickets = []
-            for _, row in chunk.iterrows():
-                request_id = str(row.get('RequestID', '')).strip()
+            for row in chunk.itertuples(index=False):
+                request_id = str(getattr(row, 'RequestID', '')).strip()
                 if not request_id:
                     continue
                 
-                linked_id = row.get('Linked Request ID')
+                linked_id = getattr(row, 'Linked Request ID', None)
                 if pd.notna(linked_id):
                     linked_id = str(linked_id).strip() or None
                 else:
                     linked_id = None
                 
-                created_time = safe_date(row.get('Created Time'))
+                created_time = safe_date(getattr(row, 'Created Time', None))
                 if created_time is None:
                     continue
                 
-                last_updated = safe_date(row.get('Last Updated Time'))
-                resolved_time = safe_date(row.get('Resolved Time'))
+                last_updated = safe_date(getattr(row, 'Last Updated Time', None))
+                resolved_time = safe_date(getattr(row, 'Resolved Time', None))
                 
                 tickets.append(Ticket(
                     request_id=request_id,
-                    subject=str(row.get('Subject', '')).strip(),
-                    request_status=str(row.get('Request Status', '')).strip(),
-                    technician=str(row.get('Technician', '')).strip() if pd.notna(row.get('Technician')) else None,
+                    subject=str(getattr(row, 'Subject', '')).strip(),
+                    request_status=str(getattr(row, 'Request Status', '')).strip(),
+                    technician=str(getattr(row, 'Technician', '')).strip() if pd.notna(getattr(row, 'Technician', None)) else None,
                     created_time=created_time,
                     last_updated=last_updated,
                     resolved_time=resolved_time,
                     linked_request_id=linked_id,
-                    requester=str(row.get('Requester', '')).strip() if pd.notna(row.get('Requester')) else None,
+                    requester=str(getattr(row, 'Requester', '')).strip() if pd.notna(getattr(row, 'Requester', None)) else None,
                 ))
                 total += 1
             
             if tickets:
                 Ticket.objects.bulk_create(tickets, ignore_conflicts=True)
         
-        # Enviar correo con tickets listos para cerrar solo si se solicitó
-        if request.POST.get('enviar_correo') == '1':
-            destinatario = request.POST.get('email_destino', '').strip()
-            if not destinatario:
-                messages.error(request, 'Debes ingresar un email destino para enviar el reporte.')
-            else:
-                exito, error_msg = enviar_correo_tickets_cerrar(destinatario)
-                if exito:
-                    messages.success(request, f'Correo enviado exitosamente a {destinatario}')
-                else:
-                    messages.error(request, f'No se pudo enviar el correo. {error_msg}')
-        else:
-            messages.info(request, 'Archivo cargado sin envío de correo.')
-        
+        messages.success(request, f'{total} tickets cargados correctamente. Puedes enviar el reporte desde el dashboard.')
         return redirect('alertas')
     
     return render(request, 'tickets/upload.html')
 
 
+def enviar_correo_endpoint(request):
+    if request.method == 'POST':
+        destinatario = request.POST.get('email_destino', '').strip()
+        if not destinatario:
+            messages.error(request, 'Debes ingresar un email destino.')
+        else:
+            exito, error_msg = enviar_correo_tickets_cerrar(destinatario)
+            if exito:
+                messages.success(request, f'Correo enviado a {destinatario}')
+            else:
+                messages.error(request, f'Error: {error_msg}')
+    return redirect('alertas')
+
+
 def alertas(request):
-    # Obtener estadísticas con consultas directas (optimizado)
     total_tickets = Ticket.objects.count()
     
-    # Contar por tipo usando filtros directos (MUCHO más rápido)
     joiners = Ticket.objects.filter(subject__icontains='Joiner').count()
     movers = Ticket.objects.filter(subject__icontains='Mover').count()
     leavers = Ticket.objects.filter(subject__icontains='Leaver').count()
     
-    # Obtener padres e hijos con una sola consulta y agrupar en Python
     estados_cerrados = ['closed', 'resolved', 'cerrado', 'completed', 'cancelled', 'cancelado']
     estados_excluir_padre = estados_cerrados
     
-    # Obtener todos los padres y precalcular datos
     padres = Ticket.objects.filter(
         Q(linked_request_id__isnull=True) | Q(linked_request_id='')
     ).exclude(request_status__in=estados_excluir_padre)
     
     total_padres = padres.count()
     
-    # Obtener hijos agrupados por padre usando un diccionario
     hijos = Ticket.objects.exclude(
         Q(linked_request_id__isnull=True) | Q(linked_request_id='')
     )
@@ -426,7 +408,6 @@ def alertas(request):
     for padre in padres:
         todos_hijos = hijos_por_padre.get(padre.request_id, [])
         
-        # Separar hijos abiertos y cerrados
         hijos_abiertos = []
         hijos_cerrados = []
         for h in todos_hijos:
@@ -440,7 +421,6 @@ def alertas(request):
         total_hijos = len(todos_hijos)
         hijos_pendientes = len(hijos_abiertos)
         
-        # Calcular días abierto
         if hasattr(padre.created_time, 'date'):
             fecha_padre = padre.created_time.date()
         else:
@@ -482,7 +462,6 @@ def alertas(request):
                 else:
                     alertas_resto.append(alerta)
     
-    # Ordenar por severidad
     severidad_orden = {'critica': 0, 'alta': 1, 'media': 2, 'baja': 3, 'cerrar': 4}
     alertas_nz_au.sort(key=lambda x: (severidad_orden.get(x['severidad'], 4), -x['dias_abierto']))
     alertas_resto.sort(key=lambda x: (severidad_orden.get(x['severidad'], 4), -x['dias_abierto']))
