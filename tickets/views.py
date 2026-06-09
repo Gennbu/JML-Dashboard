@@ -290,9 +290,7 @@ def upload_csv(request):
         csv_file = request.FILES['csv_file']
         
         if request.POST.get('limpiar_bd') == '1':
-            with connection.cursor() as cursor:
-                cursor.execute('DELETE FROM tickets_ticket')
-                cursor.execute('DELETE FROM sqlite_sequence WHERE name="tickets_ticket"')
+            Ticket.objects.all().delete()
         
         try:
             chunks = pd.read_csv(
@@ -352,12 +350,13 @@ def upload_csv(request):
             
             if tickets:
                 Ticket.objects.bulk_create(tickets, ignore_conflicts=True)
+                print(f"Chunk procesado: {len(tickets)} tickets")
         
-        messages.success(request, f'{total} tickets cargados correctamente. Puedes enviar el reporte desde el dashboard.')
+        print(f"Total de tickets insertados: {total}")
+        messages.success(request, f'{total} tickets cargados correctamente.')
         return redirect('alertas')
     
     return render(request, 'tickets/upload.html')
-
 
 def enviar_correo_endpoint(request):
     if request.method == 'POST':
@@ -375,6 +374,14 @@ def enviar_correo_endpoint(request):
 
 def alertas(request):
     total_tickets = Ticket.objects.count()
+    print(f"Total tickets en BD: {total_tickets}")
+    
+    if total_tickets == 0:
+        print("No hay tickets en la base de datos")
+    else:
+        primeros = Ticket.objects.all()[:3]
+        for t in primeros:
+            print(f"Ticket sample: {t.request_id} - {t.subject[:50]}")
     
     joiners = Ticket.objects.filter(subject__icontains='Joiner').count()
     movers = Ticket.objects.filter(subject__icontains='Mover').count()
