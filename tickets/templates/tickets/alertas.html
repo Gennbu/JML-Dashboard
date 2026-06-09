@@ -817,97 +817,87 @@
                     </svg>Limpiar</button>
             </div>
         </div>
-        <div class="tickets-section">
-            <div class="tickets-header">
-                <h2><svg viewBox="0 0 24 24">
-                        <rect x="2" y="4" width="20" height="16" rx="2" />
-                        <line x1="2" y1="10" x2="22" y2="10" />
-                    </svg>Tickets de Alerta</h2>
-            </div>
-            <div id="ticketsContainer">
-                {% for ticket in todas_las_alertas %}
-                <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
-                    data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
-                    data-id="{{ ticket.padre.request_id }}">
-                    <div class="alerta-header" onclick="toggleBody(this)">
-                        <div class="alerta-info">
-                            <span class="severidad-badge {{ ticket.severidad }}">
-                                {% if ticket.severidad == 'critica' %}CRÍTICA
-                                {% elif ticket.severidad == 'alta' %}ALTA
-                                {% elif ticket.severidad == 'media' %}MEDIA
-                                {% elif ticket.severidad == 'baja' %}BAJA
-                                {% else %}CERRAR{% endif %}
-                            </span>
-                            <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
-                            <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{
-                                ticket.padre.request_id }}</span>
-                            <span class="nombre-persona">{{ ticket.nombre }}</span>
-                            {% if ticket.hijos_pendientes > 0 %}
-                            <span class="hijos-abiertos-badge">{{ ticket.hijos_pendientes }} abiertos</span>
+                    <div id="ticketsContainer">
+                {% if todas_las_alertas %}
+                    {% for ticket in todas_las_alertas %}
+                    <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
+                        data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
+                        data-id="{{ ticket.padre.request_id }}">
+                        <div class="alerta-header" onclick="toggleBody(this)">
+                            <div class="alerta-info">
+                                <span class="severidad-badge {{ ticket.severidad }}">
+                                    {% if ticket.severidad == 'critica' %}CRÍTICA
+                                    {% elif ticket.severidad == 'alta' %}ALTA
+                                    {% elif ticket.severidad == 'media' %}MEDIA
+                                    {% elif ticket.severidad == 'baja' %}BAJA
+                                    {% else %}CERRAR{% endif %}
+                                </span>
+                                <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
+                                <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
+                                <span class="nombre-persona">{{ ticket.nombre }}</span>
+                                {% if ticket.hijos_pendientes > 0 %}
+                                <span class="hijos-abiertos-badge">{{ ticket.hijos_pendientes }} abiertos</span>
+                                {% endif %}
+                                {% if ticket.hijos_cerrados_count > 0 %}
+                                <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
+                                {% endif %}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span class="dias-badge {% if ticket.dias_abierto > 1 %}critico{% endif %}">{{ ticket.dias_abierto }} días</span>
+                                <span class="flecha">▼</span>
+                            </div>
+                        </div>
+                        <div class="alerta-body">
+                            <div class="description-box {% if ticket.severidad == 'critica' %}critica{% else %}pendiente{% endif %}">
+                                <strong>{{ ticket.mensaje }}</strong>
+                                {% if ticket.dias_limite %}<br><small>Límite: {{ ticket.dias_limite }} días</small>{% endif %}
+                            </div>
+                            <div class="subject-box">{{ ticket.subject_completo }}</div>
+                            {% if ticket.hijos %}
+                            <div class="hijos-table-wrapper">
+                                <table class="hijos-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Subject</th>
+                                            <th>Estado</th>
+                                            <th>Técnico</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for hijo in ticket.hijos %}
+                                        <tr>
+                                            <td><span class="hijo-id" onclick="copyId(event, '{{ hijo.request_id }}')">{{ hijo.request_id }}</span></td>
+                                            <td>{{ hijo.subject|truncatechars:60 }}</td>
+                                            <td class="estado-abierto">{{ hijo.request_status }}</td>
+                                            <td>{{ hijo.technician|default:"—" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
                             {% endif %}
                             {% if ticket.hijos_cerrados_count > 0 %}
-                            <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
+                            <div class="cerrados-mensaje">
+                                <svg viewBox="0 0 24 24">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) ya están cerrados
+                            </div>
                             {% endif %}
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                            <span class="dias-badge {% if ticket.dias_abierto > 1 %}critico{% endif %}">{{
-                                ticket.dias_abierto }} días</span>
-                            <span class="flecha">▼</span>
-                        </div>
                     </div>
-                    <div class="alerta-body">
-                        <div
-                            class="description-box {% if ticket.severidad == 'critica' %}critica{% else %}pendiente{% endif %}">
-                            <strong>{{ ticket.mensaje }}</strong>
-                            {% if ticket.dias_limite %}<br><small>Límite: {{ ticket.dias_limite }} días</small>{% endif
-                            %}
-                        </div>
-                        <div class="subject-box">{{ ticket.subject_completo }}</div>
-                        {% if ticket.hijos %}
-                        <div class="hijos-table-wrapper">
-                            <table class="hijos-table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Subject</th>
-                                        <th>Estado</th>
-                                        <th>Técnico</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for hijo in ticket.hijos %}
-                                    <tr>
-                                        <td><span class="hijo-id" onclick="copyId(event, '{{ hijo.request_id }}')">
-                                                {{ hijo.request_id }}</span></td>
-                                        <td>{{ hijo.subject|truncatechars:60 }}</td>
-                                        <td class="estado-abierto">{{ hijo.request_status }}</td>
-                                        <td>{{ hijo.technician|default:"—" }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% endif %}
-                        {% if ticket.hijos_cerrados_count > 0 %}
-                        <div class="cerrados-mensaje">
-                            <svg viewBox="0 0 24 24">
-                                <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                            {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) ya están cerrados
-                        </div>
-                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <p>No hay tickets pendientes</p>
                     </div>
-                </div>
-                {% empty %}
-                <div class="empty-state">
-                    <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    <p>No hay tickets pendientes</p>
-                </div>
-                {% endfor %}
+                {% endif %}
             </div>
         </div>
     </div>
