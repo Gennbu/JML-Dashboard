@@ -203,6 +203,13 @@ def obtener_alertas_padre_listos_para_cerrar():
 
 
 def enviar_correo_tickets_cerrar(destinatario_email=None):
+    print(f"Iniciando envío a: {destinatario_email}")
+    print(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
+    if settings.EMAIL_HOST_PASSWORD:
+        print(f"EMAIL_HOST_PASSWORD: {settings.EMAIL_HOST_PASSWORD[:10]}...")
+    else:
+        print("EMAIL_HOST_PASSWORD: NO ESTÁ CONFIGURADA")
+    
     if not destinatario_email:
         destinatario_email = settings.DEFAULT_FROM_EMAIL
     

@@ -873,7 +873,11 @@
                     </svg>Limpiar</button>
             </div>
         </div>
-                    <div id="ticketsContainer">
+        <div class="tickets-section">
+            <div class="tickets-header">
+                <h2>Tickets para revisar</h2>
+            </div>
+            <div id="ticketsContainer">
                 {% if todas_las_alertas %}
                     {% for ticket in todas_las_alertas %}
                     <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
