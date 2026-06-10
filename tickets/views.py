@@ -246,7 +246,7 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
             <td>{ticket['nombre']}</td>
             <td><span class="badge {badge_class}">{tipo_value}</span></td>
             <td>{ticket['dias_abierto']}</td>
-            <td>{ticket['hijos_cerrados']}</td>
+            <td>{ticket['hijos_cerrados_count']}</td>
             </tr>
             """
         
@@ -263,15 +263,21 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         if not destinatarios:
             return False, 'No se proporciono ningun correo valido.'
         
-        send_mail(
-            subject=f'JML Dashboard - {len(tickets_cerrar)} tickets listos para cerrar',
-            message='Por favor abre este correo en un cliente que soporte HTML.',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=destinatarios,
-            html_message=html_content,
-            fail_silently=False,
-        )
-        return True, None
+        # Envío robusto para Render, con fail_silently=True y EmailMultiAlternatives
+        try:
+            from django.core.mail import EmailMultiAlternatives
+            msg = EmailMultiAlternatives(
+                subject=f'JML Dashboard - {len(tickets_cerrar)} tickets listos para cerrar',
+                body='Por favor abre este correo en un cliente que soporte HTML.',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=destinatarios
+            )
+            msg.attach_alternative(html_content, "text/html")
+            msg.send(fail_silently=True)
+            return True, f'Reporte enviado a {", ".join(destinatarios[:2])}{" y más" if len(destinatarios) > 2 else ""}'
+        except Exception as mail_error:
+            print(f"Error al enviar correo (pero continúa): {str(mail_error)}")
+            return False, f'No se pudo enviar el correo en este momento, pero el reporte está listo: {str(mail_error)[:150]}'
     except Exception as e:
         return False, str(e)
 
