@@ -46,84 +46,72 @@ def es_nz_o_australia(subject):
     return bool(re.search(r'\b(New Zealand|Australia|NZ)\b', subject, re.IGNORECASE))
 
 
-def calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes, resolved_time=None):
+def calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes):
     tipo_jml = 'Otro'
-    if 'Joiner' in padre.subject:
+    subject_lower = padre.subject.lower()
+    if 'joiner' in subject_lower:
         tipo_jml = 'Joiner'
-    elif 'Mover' in padre.subject:
+    elif 'mover' in subject_lower:
         tipo_jml = 'Mover'
-    elif 'Leaver' in padre.subject:
+    elif 'leaver' in subject_lower:
         tipo_jml = 'Leaver'
 
     es_nz_au = es_nz_o_australia(padre.subject)
 
+    # REGLA ORO: Si hay hijos y todos están cerrados, severidad CERRAR
     if total_hijos > 0 and hijos_pendientes == 0:
         return {
             'tipo_jml': tipo_jml,
             'tipo_alerta': 'cerrar_manual',
             'severidad': 'cerrar',
             'dias_limite': None,
-            'mensaje': 'Todos los hijos cerrados - Cerrar padre manualmente'
+            'mensaje': 'Todos los hijos cerrados - Listo para cierre manual'
         }
 
-    if hijos_pendientes > 0:
-        return {
-            'tipo_jml': tipo_jml,
-            'tipo_alerta': 'pendiente',
-            'severidad': 'baja',
-            'dias_limite': None,
-            'mensaje': f'{hijos_pendientes} tareas pendientes'
-        }
-
-    if tipo_jml == 'Leaver':
-        if es_nz_au:
-            if dias_abierto > 3:
-                return {
-                    'tipo_jml': tipo_jml,
-                    'tipo_alerta': 'pendiente',
-                    'severidad': 'alta',
-                    'dias_limite': 3,
-                    'mensaje': f'Leaver NZ/AU abierto {dias_abierto} dias (limite: 3)'
-                }
-        else:
-            if dias_abierto >= 1:
-                return {
-                    'tipo_jml': tipo_jml,
-                    'tipo_alerta': 'pendiente',
-                    'severidad': 'critica',
-                    'dias_limite': 1,
-                    'mensaje': f'Leaver abierto {dias_abierto} dias - CRITICO! Max 24h'
-                }
-
-    elif tipo_jml == 'Joiner':
-        limite = 10
-        if dias_abierto > limite:
-            return {
-                'tipo_jml': tipo_jml,
-                'tipo_alerta': 'pendiente',
-                'severidad': 'alta',
-                'dias_limite': limite,
-                'mensaje': f'Joiner abierto {dias_abierto} dias (limite: {limite})'
-            }
-
-    elif tipo_jml == 'Mover':
-        limite = 10
-        if dias_abierto > limite:
-            return {
-                'tipo_jml': tipo_jml,
-                'tipo_alerta': 'pendiente',
-                'severidad': 'media',
-                'dias_limite': limite,
-                'mensaje': f'Mover abierto {dias_abierto} dias (limite: {limite})'
-            }
-
+    # Si no hay hijos, es una alerta de "Sin tareas"
     if total_hijos == 0:
         return {
             'tipo_jml': tipo_jml,
             'tipo_alerta': 'sin_hijos',
             'severidad': 'media',
             'dias_limite': None,
-            'mensaje': 'Sin tareas asociadas'
+            'mensaje': 'Ticket padre sin tareas hijas asociadas'
+        }
+
+    # Si hay hijos pendientes, aplicamos reglas de tiempo
+    if hijos_pendientes > 0:
+        if tipo_jml == 'Leaver':
+            if es_nz_au:
+                if dias_abierto > 3:
+                    return {
+                        'tipo_jml': tipo_jml, 'tipo_alerta': 'pendiente', 'severidad': 'alta',
+                        'dias_limite': 3, 'mensaje': f'Leaver NZ/AU abierto {dias_abierto} días (límite: 3)'
+                    }
+            else:
+                if dias_abierto >= 1:
+                    return {
+                        'tipo_jml': tipo_jml, 'tipo_alerta': 'pendiente', 'severidad': 'critica',
+                        'dias_limite': 1, 'mensaje': f'Leaver abierto {dias_abierto} días - ¡CRÍTICO! Max 24h'
+                    }
+        
+        elif tipo_jml == 'Joiner' and dias_abierto > 10:
+            return {
+                'tipo_jml': tipo_jml, 'tipo_alerta': 'pendiente', 'severidad': 'alta',
+                'dias_limite': 10, 'mensaje': f'Joiner abierto {dias_abierto} días (límite: 10)'
+            }
+            
+        elif tipo_jml == 'Mover' and dias_abierto > 10:
+            return {
+                'tipo_jml': tipo_jml, 'tipo_alerta': 'pendiente', 'severidad': 'media',
+                'dias_limite': 10, 'mensaje': f'Mover abierto {dias_abierto} días (límite: 10)'
+            }
+
+        return {
+            'tipo_jml': tipo_jml,
+            'tipo_alerta': 'pendiente',
+            'severidad': 'baja',
+            'dias_limite': None,
+            'mensaje': f'{hijos_pendientes} tareas pendientes de cerrar'
         }
 
     return None
@@ -131,45 +119,45 @@ def calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes, resol
 
 def obtener_alertas_padre_listos_para_cerrar():
     hoy = timezone.now().date()
+    # Definimos estados cerrados de forma estándar
+    estados_cerrados = ['closed', 'resolved', 'cerrado', 'completed', 'cancelled', 'cancelado', 'cierre manual']
     
-    estados_cerrados = ['closed', 'resolved', 'cerrado', 'completed', 'cancelled', 'cancelado']
-    
-    padres = Ticket.objects.filter(
+    # 1. Obtener todos los IDs de tickets padre que están abiertos
+    padres_abiertos = Ticket.objects.filter(
         Q(linked_request_id__isnull=True) | Q(linked_request_id='')
     ).exclude(
         request_status__in=estados_cerrados
     )
     
-    hijos = Ticket.objects.exclude(
-        Q(linked_request_id__isnull=True) | Q(linked_request_id='')
-    ).exclude(
-        request_status__in=estados_cerrados
+    # 2. Obtener todos los hijos que pertenecen a estos padres abiertos
+    ids_padres_abiertos = padres_abiertos.values_list('request_id', flat=True)
+    hijos_de_padres_abiertos = Ticket.objects.filter(
+        linked_request_id__in=ids_padres_abiertos
     )
     
+    # Agrupamos hijos por padre para procesar en memoria de forma eficiente
     hijos_por_padre = defaultdict(list)
-    for hijo in hijos:
-        if hijo.linked_request_id:
-            hijos_por_padre[hijo.linked_request_id].append(hijo)
+    for hijo in hijos_de_padres_abiertos:
+        hijos_por_padre[hijo.linked_request_id].append(hijo)
     
     cerrar_manual_resto = []
     cerrar_manual_nz_au = []
     
-    for padre in padres:
-        todos_hijos = hijos_por_padre.get(padre.request_id, [])
-        if not todos_hijos:
+    for padre in padres_abiertos:
+        hijos_del_padre = hijos_por_padre.get(padre.request_id, [])
+        
+        # Un padre está listo para cerrar SI tiene hijos Y todos sus hijos están cerrados
+        if not hijos_del_padre:
             continue
+            
+        hijos_abiertos = [h for h in hijos_del_padre if h.request_status.lower() not in estados_cerrados]
         
-        hijos_cerrados_count = Ticket.objects.filter(
-            linked_request_id=padre.request_id,
-            request_status__in=estados_cerrados
-        ).count()
-        
-        hijos_abiertos_count = len(todos_hijos)
-        
-        if hijos_abiertos_count == 0 and hijos_cerrados_count > 0:
-            if hasattr(padre.created_time, 'date'):
-                dias_abierto = (hoy - padre.created_time.date()).days
-            else:
+        if len(hijos_abiertos) == 0:
+            # Todos los hijos están cerrados
+            hijos_cerrados_count = len(hijos_del_padre)
+            
+            dias_abierto = 0
+            if padre.created_time:
                 dias_abierto = (hoy - padre.created_time).days
             
             region = 'nz_au' if es_nz_o_australia(padre.subject) else 'resto'
@@ -186,7 +174,6 @@ def obtener_alertas_padre_listos_para_cerrar():
                 'total_hijos': hijos_cerrados_count,
                 'hijos_pendientes': 0,
                 'hijos': [],
-                'hijos_cerrados': hijos_cerrados_count,
                 'hijos_cerrados_count': hijos_cerrados_count,
                 'tipo_jml': tipo_value,
                 'tipo': tipo_value,
@@ -208,8 +195,12 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
     if not destinatario_email:
         destinatario_email = settings.EMAIL_HOST_USER
     
-    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
-        return False, 'Faltan credenciales SMTP en settings (EMAIL_HOST_USER o EMAIL_HOST_PASSWORD).'
+    # Verificación más robusta de credenciales
+    email_user = getattr(settings, 'EMAIL_HOST_USER', None)
+    email_pass = getattr(settings, 'EMAIL_HOST_PASSWORD', None)
+    
+    if not email_user or not email_pass or email_user == 'tu_email@gmail.com' or email_pass == '':
+        return False, 'Configuración SMTP incompleta. Por favor, configura GMAIL_EMAIL y GMAIL_PASSWORD en tu archivo .env o variables de entorno.'
     
     try:
         cerrar_manual_resto, cerrar_manual_nz_au = obtener_alertas_padre_listos_para_cerrar()
@@ -293,10 +284,27 @@ def upload_csv(request):
             Ticket.objects.all().delete()
         
         try:
+            # Intentamos leer primero sin saltar filas para detectar el encabezado
+            # Muchas exportaciones de ServiceDesk Plus o herramientas similares tienen metadatos al inicio
+            # Si el usuario dice que carga 0, es probable que skiprows=5 se esté saltando los datos reales
+            
+            # Leemos las primeras 10 filas para ver dónde está el encabezado
+            preview = pd.read_csv(csv_file, nrows=10, header=None)
+            csv_file.seek(0) # Reset pointer
+            
+            header_row = 0
+            for i, row in preview.iterrows():
+                row_str = str(row.values).lower()
+                if 'requestid' in row_str or 'subject' in row_str:
+                    header_row = i
+                    break
+            
+            print(f"Detectado encabezado en fila: {header_row}")
+            
             chunks = pd.read_csv(
                 csv_file,
-                skiprows=5,
-                chunksize=1000,
+                skiprows=header_row,
+                chunksize=2000, # Aumentamos el tamaño del chunk para eficiencia
                 dtype={
                     'RequestID': str,
                     'Linked Request ID': str,
@@ -307,52 +315,71 @@ def upload_csv(request):
             return HttpResponse(f"Error al leer el archivo CSV: {e}", status=400)
         
         def safe_date(valor):
-            if pd.notna(valor) and str(valor).strip() not in ['Not Assigned', '']:
-                try:
-                    return pd.to_datetime(valor, errors='coerce').date()
-                except:
-                    return None
-            return None
+            if pd.isna(valor) or str(valor).strip() in ['Not Assigned', '', 'None', 'nan']:
+                return None
+            try:
+                # Intentamos parsear la fecha de forma más robusta
+                return pd.to_datetime(valor, errors='coerce').date()
+            except:
+                return None
         
         total = 0
         for chunk in chunks:
-            tickets = []
-            for row in chunk.itertuples(index=False):
-                request_id = str(getattr(row, 'RequestID', '')).strip()
-                if not request_id:
-                    continue
-                
-                linked_id = getattr(row, 'Linked Request ID', None)
-                if pd.notna(linked_id):
-                    linked_id = str(linked_id).strip() or None
-                else:
-                    linked_id = None
-                
-                created_time = safe_date(getattr(row, 'Created Time', None))
-                if created_time is None:
-                    continue
-                
-                last_updated = safe_date(getattr(row, 'Last Updated Time', None))
-                resolved_time = safe_date(getattr(row, 'Resolved Time', None))
-                
-                tickets.append(Ticket(
-                    request_id=request_id,
-                    subject=str(getattr(row, 'Subject', '')).strip(),
-                    request_status=str(getattr(row, 'Request Status', '')).strip(),
-                    technician=str(getattr(row, 'Technician', '')).strip() if pd.notna(getattr(row, 'Technician', None)) else None,
-                    created_time=created_time,
-                    last_updated=last_updated,
-                    resolved_time=resolved_time,
-                    linked_request_id=linked_id,
-                    requester=str(getattr(row, 'Requester', '')).strip() if pd.notna(getattr(row, 'Requester', None)) else None,
-                ))
-                total += 1
+            # Limpiamos nombres de columnas por si tienen espacios
+            chunk.columns = [c.strip() for c in chunk.columns]
             
-            if tickets:
-                Ticket.objects.bulk_create(tickets, ignore_conflicts=True)
-                print(f"Chunk procesado: {len(tickets)} tickets")
+            # Verificar si las columnas necesarias existen
+            required_cols = ['RequestID', 'Subject', 'Request Status']
+            missing = [c for c in required_cols if c not in chunk.columns]
+            if missing:
+                print(f"Error: Faltan columnas {missing} en el chunk")
+                continue
+
+            tickets_to_create = []
+            for row in chunk.itertuples(index=False):
+                # Usamos getattr con el nombre de la columna limpia
+                request_id = str(getattr(row, 'RequestID', '')).strip()
+                if not request_id or request_id.lower() == 'nan':
+                    continue
+                
+                # Mapeo de campos
+                try:
+                    subject = str(getattr(row, 'Subject', '')).strip()
+                    status = str(getattr(row, 'Request Status', '')).strip()
+                    
+                    # Evitar procesar filas que parecen ser encabezados repetidos o vacías
+                    if request_id.lower() == 'requestid' or not subject:
+                        continue
+
+                    linked_id = getattr(row, 'Linked_Request_ID', getattr(row, 'Linked Request ID', None))
+                    if pd.notna(linked_id):
+                        linked_id = str(linked_id).strip()
+                        if linked_id.lower() in ['nan', '', 'none']:
+                            linked_id = None
+                    else:
+                        linked_id = None
+                    
+                    tickets_to_create.append(Ticket(
+                        request_id=request_id,
+                        subject=subject,
+                        request_status=status,
+                        technician=str(getattr(row, 'Technician', '')).strip() if pd.notna(getattr(row, 'Technician', None)) else None,
+                        created_time=safe_date(getattr(row, 'Created_Time', getattr(row, 'Created Time', None))),
+                        last_updated=safe_date(getattr(row, 'Last_Updated_Time', getattr(row, 'Last Updated Time', None))),
+                        resolved_time=safe_date(getattr(row, 'Resolved_Time', getattr(row, 'Resolved Time', None))),
+                        linked_request_id=linked_id,
+                        requester=str(getattr(row, 'Requester', '')).strip() if pd.notna(getattr(row, 'Requester', None)) else None,
+                    ))
+                except Exception as row_err:
+                    print(f"Error procesando fila {request_id}: {row_err}")
+                    continue
+            
+            if tickets_to_create:
+                Ticket.objects.bulk_create(tickets_to_create, ignore_conflicts=True)
+                total += len(tickets_to_create)
+                print(f"Procesados {total} tickets...")
         
-        print(f"Total de tickets insertados: {total}")
+        print(f"Total final de tickets insertados: {total}")
         messages.success(request, f'{total} tickets cargados correctamente.')
         return redirect('alertas')
     
@@ -374,36 +401,36 @@ def enviar_correo_endpoint(request):
 
 def alertas(request):
     total_tickets = Ticket.objects.count()
-    print(f"Total tickets en BD: {total_tickets}")
-    
     if total_tickets == 0:
-        print("No hay tickets en la base de datos")
-    else:
-        primeros = Ticket.objects.all()[:3]
-        for t in primeros:
-            print(f"Ticket sample: {t.request_id} - {t.subject[:50]}")
-    
+        return render(request, 'tickets/alertas.html', {
+            'todas_las_alertas': [],
+            'total_tickets': 0,
+            'total_padres': 0,
+            'joiners': 0, 'movers': 0, 'leavers': 0, 'total_cerrar': 0
+        })
+
+    # Optimizamos conteos
     joiners = Ticket.objects.filter(subject__icontains='Joiner').count()
     movers = Ticket.objects.filter(subject__icontains='Mover').count()
     leavers = Ticket.objects.filter(subject__icontains='Leaver').count()
     
-    estados_cerrados = ['closed', 'resolved', 'cerrado', 'completed', 'cancelled', 'cancelado']
-    estados_excluir_padre = estados_cerrados
+    # Estados cerrados estándar
+    estados_cerrados = ['closed', 'resolved', 'cerrado', 'completed', 'cancelled', 'cancelado', 'cierre manual']
     
+    # Padres abiertos
     padres = Ticket.objects.filter(
         Q(linked_request_id__isnull=True) | Q(linked_request_id='')
-    ).exclude(request_status__in=estados_excluir_padre)
+    ).exclude(request_status__in=estados_cerrados)
     
     total_padres = padres.count()
     
-    hijos = Ticket.objects.exclude(
-        Q(linked_request_id__isnull=True) | Q(linked_request_id='')
-    )
+    # Obtenemos solo los hijos de los padres que están abiertos (para ahorrar memoria)
+    ids_padres_abiertos = padres.values_list('request_id', flat=True)
+    hijos_relacionados = Ticket.objects.filter(linked_request_id__in=ids_padres_abiertos)
     
     hijos_por_padre = defaultdict(list)
-    for hijo in hijos:
-        if hijo.linked_request_id:
-            hijos_por_padre[hijo.linked_request_id].append(hijo)
+    for hijo in hijos_relacionados:
+        hijos_por_padre[hijo.linked_request_id].append(hijo)
     
     hoy = timezone.now().date()
     
@@ -415,29 +442,16 @@ def alertas(request):
     for padre in padres:
         todos_hijos = hijos_por_padre.get(padre.request_id, [])
         
-        hijos_abiertos = []
-        hijos_cerrados = []
-        for h in todos_hijos:
-            estado = str(h.request_status or '').strip().lower()
-            if estado in estados_cerrados:
-                hijos_cerrados.append(h)
-            else:
-                hijos_abiertos.append(h)
+        hijos_abiertos = [h for h in todos_hijos if h.request_status.lower() not in estados_cerrados]
+        hijos_cerrados_count = len(todos_hijos) - len(hijos_abiertos)
         
-        hijos_cerrados_count = len(hijos_cerrados)
-        total_hijos = len(todos_hijos)
-        hijos_pendientes = len(hijos_abiertos)
-        
-        if hasattr(padre.created_time, 'date'):
-            fecha_padre = padre.created_time.date()
-        else:
-            fecha_padre = padre.created_time
-        dias_abierto = (hoy - fecha_padre).days if fecha_padre else 0
-        
-        resolved_time = getattr(padre, 'resolved_time', None)
+        dias_abierto = 0
+        if padre.created_time:
+            dias_abierto = (hoy - padre.created_time).days
+            
         region = 'nz_au' if es_nz_o_australia(padre.subject) else 'resto'
         
-        prioridad = calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes, resolved_time)
+        prioridad = calcular_prioridad(padre, dias_abierto, len(todos_hijos), len(hijos_abiertos))
         
         if prioridad:
             alerta = {
@@ -447,9 +461,9 @@ def alertas(request):
                 'tipo_alerta': prioridad['tipo_alerta'],
                 'severidad': prioridad['severidad'],
                 'dias_abierto': dias_abierto,
-                'total_hijos': total_hijos,
-                'hijos_pendientes': hijos_pendientes,
-                'hijos': hijos_abiertos,
+                'total_hijos': len(todos_hijos),
+                'hijos_pendientes': len(hijos_abiertos),
+                'hijos': hijos_abiertos[:10], # Limitamos hijos mostrados para no saturar el HTML
                 'hijos_cerrados_count': hijos_cerrados_count,
                 'tipo_jml': prioridad['tipo_jml'],
                 'mensaje': prioridad['mensaje'],
@@ -459,19 +473,16 @@ def alertas(request):
             }
             
             if prioridad['tipo_alerta'] == 'cerrar_manual':
-                if region == 'nz_au':
-                    cerrar_manual_nz_au.append(alerta)
-                else:
-                    cerrar_manual_resto.append(alerta)
+                if region == 'nz_au': cerrar_manual_nz_au.append(alerta)
+                else: cerrar_manual_resto.append(alerta)
             else:
-                if region == 'nz_au':
-                    alertas_nz_au.append(alerta)
-                else:
-                    alertas_resto.append(alerta)
+                if region == 'nz_au': alertas_nz_au.append(alerta)
+                else: alertas_resto.append(alerta)
     
-    severidad_orden = {'critica': 0, 'alta': 1, 'media': 2, 'baja': 3, 'cerrar': 4}
-    alertas_nz_au.sort(key=lambda x: (severidad_orden.get(x['severidad'], 4), -x['dias_abierto']))
-    alertas_resto.sort(key=lambda x: (severidad_orden.get(x['severidad'], 4), -x['dias_abierto']))
+    # Ordenamiento
+    sev_map = {'critica': 0, 'alta': 1, 'media': 2, 'baja': 3, 'cerrar': 4}
+    alertas_nz_au.sort(key=lambda x: (sev_map.get(x['severidad'], 4), -x['dias_abierto']))
+    alertas_resto.sort(key=lambda x: (sev_map.get(x['severidad'], 4), -x['dias_abierto']))
     
     todas_las_alertas = alertas_resto + alertas_nz_au + cerrar_manual_resto + cerrar_manual_nz_au
     

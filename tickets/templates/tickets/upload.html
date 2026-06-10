@@ -563,27 +563,6 @@
                     <div class="warning-desc">Elimina todos los tickets existentes y carga desde cero. Esta acción no se puede deshacer.</div>
                 </div>
 
-                <div class="warning-box" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.15);">
-                    <div class="warning-header" style="color: #10b981;">
-                        <div class="warning-icon" style="background: rgba(16,185,129,0.15);">
-                            <svg viewBox="0 0 24 24" style="stroke: #10b981;">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                <polyline points="22 6 12 13 2 6"/>
-                            </svg>
-                        </div>
-                        <label style="color: #10b981;">
-                            <input type="checkbox" name="enviar_correo" value="1" id="enviarCorreo">
-                            Enviar correo con reporte
-                        </label>
-                    </div>
-                    <div class="warning-desc" style="color: #10b981;">Recibirás un correo con la lista de tickets listos para cerrar.</div>
-                    <div style="margin-top: 12px; display: none;" id="emailGroup">
-                        <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #10b981; margin-bottom: 6px;">Emails destino</label>
-                        <input type="email" name="email_destino" id="emailDestino" multiple placeholder="correo1@example.com, correo2@example.com" style="width: 100%; padding: 10px 12px; border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; font-size: 14px;">
-                        <small style="display:block;margin-top:6px;font-size:12px;color:#0f5132;">Puedes enviar a varios correos separados por coma.</small>
-                    </div>
-                </div>
-
                 <button type="submit" class="submit-btn" id="submitBtn">
                     <svg viewBox="0 0 24 24">
                         <polyline points="20 6 9 17 4 12"/>
@@ -671,33 +650,6 @@
         const limpiarCheckbox = document.getElementById('limpiarBD');
         if (limpiarCheckbox.checked) {
             if (!confirm('ADVERTENCIA: Esto ELIMINARÁ TODOS los tickets existentes. ¿Estás seguro de continuar?')) {
-                e.preventDefault();
-            }
-        }
-    });
-
-    // Toggle email field cuando se marca "Enviar correo"
-    const enviarCorreoCheckbox = document.getElementById('enviarCorreo');
-    const emailGroup = document.getElementById('emailGroup');
-    const emailDestino = document.getElementById('emailDestino');
-
-    enviarCorreoCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-            emailGroup.style.display = 'block';
-            emailDestino.required = true;
-        } else {
-            emailGroup.style.display = 'none';
-            emailDestino.required = false;
-        }
-    });
-
-    // Validar email antes de enviar
-    document.getElementById('uploadForm').addEventListener('submit', function(e) {
-        if (document.getElementById('enviarCorreo').checked) {
-            const rawEmails = document.getElementById('emailDestino').value.trim();
-            const emails = rawEmails.split(',').map(email => email.trim()).filter(Boolean);
-            if (emails.length === 0 || emails.some(email => !email.includes('@') || !email.includes('.'))) {
-                alert('Por favor ingresa uno o más correos válidos, separados por coma.');
                 e.preventDefault();
             }
         }

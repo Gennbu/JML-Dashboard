@@ -165,6 +165,21 @@
             border: 1px solid var(--dusty-denim);
             transition: all 0.2s;
             box-shadow: 0 2px 8px rgba(13, 27, 42, 0.06);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card svg.card-icon {
+            position: absolute;
+            right: -10px;
+            bottom: -10px;
+            width: 80px;
+            height: 80px;
+            opacity: 0.05;
+            stroke: currentColor;
+            transform: rotate(-15deg);
         }
 
         .stat-card:hover {
@@ -185,27 +200,20 @@
             font-weight: 800;
             color: var(--ink-black);
             line-height: 1;
+            z-index: 1;
         }
 
-        .stat-card.joiner .stat-number {
-            color: var(--emerald-500);
-        }
+        .stat-card.joiner { border-left: 4px solid var(--emerald-500); color: var(--emerald-500); }
+        .stat-card.mover { border-left: 4px solid var(--amber-500); color: var(--amber-500); }
+        .stat-card.leaver { border-left: 4px solid var(--red-500); color: var(--red-500); }
+        .stat-card.cerrar { border-left: 4px solid var(--prussian-blue); color: var(--prussian-blue); }
+        .stat-card.padres { border-left: 4px solid var(--dusk-blue); color: var(--dusk-blue); }
 
-        .stat-card.mover .stat-number {
-            color: var(--amber-500);
-        }
-
-        .stat-card.leaver .stat-number {
-            color: var(--red-500);
-        }
-
-        .stat-card.cerrar .stat-number {
-            color: var(--prussian-blue);
-        }
-
-        .stat-card.padres .stat-number {
-            color: var(--dusk-blue);
-        }
+        .stat-card.joiner .stat-number { color: var(--emerald-500); }
+        .stat-card.mover .stat-number { color: var(--amber-500); }
+        .stat-card.leaver .stat-number { color: var(--red-500); }
+        .stat-card.cerrar .stat-number { color: var(--prussian-blue); }
+        .stat-card.padres .stat-number { color: var(--dusk-blue); }
 
         .message-box {
             margin: 24px 0;
@@ -548,6 +556,10 @@
         .hijos-table-wrapper {
             overflow-x: auto;
             margin-top: 12px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--alabaster-grey);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
         .hijos-table {
@@ -590,16 +602,28 @@
 
         .hijos-table th {
             text-align: left;
-            padding: 10px;
-            background: var(--alabaster-grey);
+            padding: 12px 16px;
+            background: #f8fafc;
             font-weight: 600;
             color: var(--dusk-blue);
-            border-bottom: 1px solid var(--dusty-denim);
+            border-bottom: 2px solid var(--alabaster-grey);
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.05em;
         }
 
         .hijos-table td {
-            padding: 10px;
-            border-bottom: 1px solid rgba(120, 140, 170, 0.1);
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            color: var(--prussian-blue);
+        }
+
+        .hijos-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .hijos-table tr:hover td {
+            background-color: #fcfdfe;
         }
 
         .hijo-id {
@@ -724,26 +748,57 @@
     <div class="container">
         <div class="stats-grid">
             <div class="stat-card">
+                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
                 <div class="stat-title">Total Tickets</div>
                 <div class="stat-number">{{ total_tickets }}</div>
             </div>
             <div class="stat-card padres">
+                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
                 <div class="stat-title">Tickets Padre</div>
                 <div class="stat-number">{{ total_padres }}</div>
             </div>
             <div class="stat-card joiner">
+                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8" cy="7" r="4"></circle>
+                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                </svg>
                 <div class="stat-title">Joiners</div>
                 <div class="stat-number">{{ joiners }}</div>
             </div>
             <div class="stat-card mover">
+                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="16 3 21 3 21 8"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                    <polyline points="7 21 2 21 2 16"></polyline>
+                    <line x1="14" y1="10" x2="2" y2="21"></line>
+                </svg>
                 <div class="stat-title">Movers</div>
                 <div class="stat-number">{{ movers }}</div>
             </div>
             <div class="stat-card leaver">
+                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8" cy="7" r="4"></circle>
+                    <line x1="18" y1="8" x2="23" y2="13"></line>
+                    <line x1="23" y1="8" x2="18" y2="13"></line>
+                </svg>
                 <div class="stat-title">Leavers</div>
                 <div class="stat-number">{{ leavers }}</div>
             </div>
             <div class="stat-card cerrar">
+                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
                 <div class="stat-title">Listos para cerrar</div>
                 <div class="stat-number">{{ total_cerrar }}</div>
             </div>
