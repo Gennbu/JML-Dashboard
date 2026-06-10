@@ -124,7 +124,7 @@ EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 EMAIL_HOST_USER = os.getenv('GMAIL_EMAIL', 'tu_email@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('GMAIL_PASSWORD', '')
-EMAIL_TIMEOUT = 10  # Timeout de 10 segundos para no bloquear Render
+EMAIL_TIMEOUT = 30  # Aumentamos un poco para dar margen en Render
 # NOTE: EMAIL_SSL_CERTFILE is for a client certificate, not a CA bundle.
 # The CA bundle is provided via SSL_CERT_FILE for Python's SSL context.
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

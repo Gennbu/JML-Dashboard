@@ -273,11 +273,19 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
                 to=destinatarios
             )
             msg.attach_alternative(html_content, "text/html")
-            msg.send(fail_silently=True)
-            return True, f'Reporte enviado a {", ".join(destinatarios[:2])}{" y más" if len(destinatarios) > 2 else ""}'
+            msg.send(fail_silently=False) # Cambiamos a False para ver el error real en el bloque except
+            return True, f'Reporte enviado exitosamente a {", ".join(destinatarios[:2])}{" y más" if len(destinatarios) > 2 else ""}'
         except Exception as mail_error:
-            print(f"Error al enviar correo (pero continúa): {str(mail_error)}")
-            return False, f'No se pudo enviar el correo en este momento, pero el reporte está listo: {str(mail_error)[:150]}'
+            # Capturamos el error real y lo mostramos al usuario
+            error_str = str(mail_error)
+            print(f"Error detallado de correo: {error_str}")
+            if "Authentication failed" in error_str or "535" in error_str:
+                msg = "Error de autenticación: Verifica tu GMAIL_PASSWORD (debe ser una 'Contraseña de Aplicación')."
+            elif "Connection timed out" in error_str:
+                msg = "Error de conexión: Google está bloqueando el acceso desde Render o el puerto 587 está cerrado."
+            else:
+                msg = f"Error SMTP: {error_str[:100]}"
+            return False, msg
     except Exception as e:
         return False, str(e)
 
