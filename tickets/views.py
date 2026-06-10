@@ -291,13 +291,14 @@ def upload_csv(request):
     if request.method == 'POST' and request.FILES.get('csv_file'):
         csv_file = request.FILES['csv_file']
         
+        # 1. Limpieza rápida si se solicita
         if request.POST.get('limpiar_bd') == '1':
             Ticket.objects.all().delete()
         
         try:
+            # Detectar encabezado rápidamente
             preview = pd.read_csv(csv_file, nrows=10, header=None)
             csv_file.seek(0)
-            
             header_row = 0
             for i, row in preview.iterrows():
                 row_str = str(row.values).lower()
@@ -305,80 +306,84 @@ def upload_csv(request):
                     header_row = i
                     break
             
+            # Usamos un chunksize más pequeño (1000) para no saturar la RAM de Render
             chunks = pd.read_csv(
                 csv_file,
                 skiprows=header_row,
-                chunksize=2000,
-                dtype={'RequestID': str, 'Linked Request ID': str},
+                chunksize=1000,
+                dtype=str, # Leemos todo como string primero para velocidad
                 low_memory=False,
             )
         except Exception as e:
-            return HttpResponse(f"Error al leer el archivo CSV: {e}", status=400)
+            return HttpResponse(f"Error al abrir CSV: {e}", status=400)
         
-        def safe_date(valor):
-            if pd.isna(valor) or str(valor).strip() in ['Not Assigned', '', 'None', 'nan']:
-                return None
-            try:
-                return pd.to_datetime(valor, errors='coerce').date()
-            except:
-                return None
-        
-        total = 0
-        for chunk in chunks:
-            # Normalizamos nombres de columnas para que sean accesibles como atributos
-            # Quitamos espacios, guiones y pasamos a minúsculas
-            chunk.columns = [c.strip().lower().replace(' ', '_').replace('-', '_') for c in chunk.columns]
+        total_creados = 0
+        try:
+            from django.db import transaction
             
-            tickets_to_create = []
-            for row in chunk.itertuples(index=False):
-                # Intentamos obtener el ID con varias variaciones comunes
-                request_id = str(getattr(row, 'requestid', getattr(row, 'request_id', ''))).strip()
+            for chunk in chunks:
+                # Normalización ultra-rápida de columnas
+                chunk.columns = [c.strip().lower().replace(' ', '_').replace('-', '_') for c in chunk.columns]
                 
-                if not request_id or request_id.lower() in ['nan', 'requestid', 'request_id', '']:
+                # Mapeo de columnas detectadas
+                col_id = 'requestid' if 'requestid' in chunk.columns else ('request_id' if 'request_id' in chunk.columns else None)
+                col_sub = 'subject' if 'subject' in chunk.columns else None
+                col_status = 'request_status' if 'request_status' in chunk.columns else ('status' if 'status' in chunk.columns else None)
+                col_linked = 'linked_request_id' if 'linked_request_id' in chunk.columns else ('linked_id' if 'linked_id' in chunk.columns else None)
+                
+                if not col_id or not col_sub:
                     continue
-                
-                try:
-                    # Mapeo flexible de columnas
-                    subject = str(getattr(row, 'subject', '')).strip()
-                    status = str(getattr(row, 'request_status', getattr(row, 'status', ''))).strip()
-                    
-                    if not subject:
-                        continue
 
-                    # Linked ID con variaciones
-                    linked_id = getattr(row, 'linked_request_id', getattr(row, 'linked_id', None))
-                    if pd.notna(linked_id):
-                        linked_id = str(linked_id).strip()
-                        if linked_id.lower() in ['nan', '', 'none']:
-                            linked_id = None
-                    else:
-                        linked_id = None
+                # Procesamiento vectorizado de fechas (MUCHO más rápido que hacerlo en el loop)
+                date_cols = ['created_time', 'last_updated_time', 'resolved_time', 'created_at', 'last_updated', 'resolved_at']
+                for dc in date_cols:
+                    actual_col = next((c for c in chunk.columns if c == dc), None)
+                    if actual_col:
+                        chunk[actual_col] = pd.to_datetime(chunk[actual_col], errors='coerce').dt.date
+                
+                tickets_to_create = []
+                # El loop ahora solo crea objetos, no procesa datos pesados
+                for row in chunk.itertuples(index=False):
+                    rid = str(getattr(row, col_id, '')).strip()
+                    if not rid or rid.lower() in ['nan', 'requestid', '']:
+                        continue
+                        
+                    sub = str(getattr(row, col_sub, '')).strip()
+                    if not sub:
+                        continue
+                        
+                    # Extraer datos con defaults
+                    status = str(getattr(row, col_status, 'Open')).strip()
                     
-                    # Fechas con variaciones
-                    created_time = safe_date(getattr(row, 'created_time', getattr(row, 'created_at', None)))
-                    last_updated = safe_date(getattr(row, 'last_updated_time', getattr(row, 'last_updated', None)))
-                    resolved_time = safe_date(getattr(row, 'resolved_time', getattr(row, 'resolved_at', None)))
+                    lid = getattr(row, col_linked, None)
+                    if pd.isna(lid) or str(lid).lower() in ['nan', '', 'none']:
+                        lid = None
+                    else:
+                        lid = str(lid).strip()
+                        if lid == rid: lid = None # Evitar auto-vinculación
                     
                     tickets_to_create.append(Ticket(
-                        request_id=request_id,
-                        subject=subject,
+                        request_id=rid,
+                        subject=sub,
                         request_status=status,
                         technician=str(getattr(row, 'technician', '')).strip() if pd.notna(getattr(row, 'technician', None)) else None,
-                        created_time=created_time,
-                        last_updated=last_updated,
-                        resolved_time=resolved_time,
-                        linked_request_id=linked_id,
+                        created_time=getattr(row, 'created_time', getattr(row, 'created_at', None)),
+                        last_updated=getattr(row, 'last_updated_time', getattr(row, 'last_updated', None)),
+                        resolved_time=getattr(row, 'resolved_time', getattr(row, 'resolved_at', None)),
+                        linked_request_id=lid,
                         requester=str(getattr(row, 'requester', '')).strip() if pd.notna(getattr(row, 'requester', None)) else None,
                     ))
-                except Exception as e:
-                    print(f"Error en fila {request_id}: {e}")
-                    continue
-            
-            if tickets_to_create:
-                Ticket.objects.bulk_create(tickets_to_create, ignore_conflicts=True)
-                total += len(tickets_to_create)
+                
+                if tickets_to_create:
+                    with transaction.atomic():
+                        Ticket.objects.bulk_create(tickets_to_create, ignore_conflicts=True)
+                    total_creados += len(tickets_to_create)
+                    
+        except Exception as e:
+            print(f"Error procesando chunks: {e}")
+            return HttpResponse(f"Error procesando datos: {e}", status=500)
         
-        messages.success(request, f'{total} tickets cargados correctamente.')
+        messages.success(request, f'{total_creados} tickets cargados correctamente.')
         return redirect('alertas')
     
     return render(request, 'tickets/upload.html')
