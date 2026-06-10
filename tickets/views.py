@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 from django.db import connection
 import pandas as pd
 import re
+import threading
 from .models import Ticket
 from collections import defaultdict
 from datetime import date
@@ -424,11 +425,15 @@ def enviar_correo_endpoint(request):
         if not destinatario:
             messages.error(request, 'Debes ingresar un email destino.')
         else:
-            exito, error_msg = enviar_correo_tickets_cerrar(destinatario)
-            if exito:
-                messages.success(request, f'Correo enviado a {destinatario}')
-            else:
-                messages.error(request, f'Error: {error_msg}')
+            # Envío asíncrono para no bloquear el worker de Render
+            # Esto permite devolver una respuesta inmediata al usuario
+            thread = threading.Thread(
+                target=enviar_correo_tickets_cerrar,
+                args=(destinatario,)
+            )
+            thread.start()
+            
+            messages.success(request, f'Procesando envío de reporte a {destinatario}. Lo recibirás en unos momentos.')
     return redirect('alertas')
 
 
