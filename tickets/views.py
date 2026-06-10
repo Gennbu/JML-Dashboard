@@ -11,8 +11,12 @@ import requests
 import pandas as pd
 import re
 import threading
+import warnings
 from .models import Ticket
 from collections import defaultdict
+
+# Silenciar warnings de Pandas que no son críticos
+warnings.filterwarnings("ignore", category=UserWarning, module='pandas')
 
 def parse_destinatarios_email(destinatario_email):
     if not destinatario_email:
@@ -194,23 +198,44 @@ def obtener_alertas_padre_listos_para_cerrar():
 
 
 def enviar_correo_tickets_cerrar(destinatario_email=None):
-    print("--- Iniciando envio de correo ---")
+    print("--- Iniciando envio de correo (DEBUG COMPLETO) ---")
     
+    # 1. Verificar destinos
     if not destinatario_email:
         destinatario_email = settings.DEFAULT_FROM_EMAIL
+    print(f"  → Destinatarios recibidos (raw): '{destinatario_email}'")
     
-    api_key = getattr(settings, 'BREVO_API_KEY', None) or settings.EMAIL_HOST_PASSWORD
+    # 2. Obtener API Key
+    api_key = None
+    if hasattr(settings, 'BREVO_API_KEY'):
+        api_key = settings.BREVO_API_KEY
+        print(f"  → Encontrada BREVO_API_KEY en settings")
     
+    if not api_key and hasattr(settings, 'EMAIL_HOST_PASSWORD'):
+        api_key = settings.EMAIL_HOST_PASSWORD
+        print(f"  → Usando EMAIL_HOST_PASSWORD como API Key")
+        
     if not api_key:
+        print("  → ERROR: NO HAY API KEY!")
         return False, 'Falta la API Key de Brevo.'
     
+    print(f"  → API Key (primeros 10): '{api_key[:10] if len(api_key)>=10 else api_key}...'")
+    
+    # 3. Verificar remitente
+    print(f"  → Remitente configurado: '{settings.DEFAULT_FROM_EMAIL}'")
+    
     try:
+        print("  → Obteniendo alertas de 'Listos para cerrar'...")
         cerrar_manual_resto, cerrar_manual_nz_au = obtener_alertas_padre_listos_para_cerrar()
         tickets_cerrar_full = cerrar_manual_resto + cerrar_manual_nz_au
+        print(f"  → Tickets listos para cerrar: {len(tickets_cerrar_full)}")
         
         limite = 250
         tickets_cerrar = tickets_cerrar_full[:limite]
+        print(f"  → Mostrando {len(tickets_cerrar)} tickets en el correo")
         
+        # 4. Generar HTML
+        print("  → Generando HTML del reporte...")
         html_content = f"""
         <html>
         <head><meta charset="utf-8">
@@ -256,11 +281,15 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         </body>
         </html>
         """
+        print("  → HTML generado OK")
         
+        # 5. Validar destinatarios
         destinatarios = parse_destinatarios_email(destinatario_email)
+        print(f"  → Destinatarios validados: {destinatarios}")
         if not destinatarios:
             return False, 'No se proporcionó ningún correo válido.'
         
+        # 6. Preparar llamada a API
         url = "https://api.brevo.com/v3/smtp/email"
         headers = {
             "accept": "application/json",
@@ -276,15 +305,27 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
             "htmlContent": html_content
         }
         
+        print("  → Enviando POST a API Brevo...")
+        print(f"  → URL: {url}")
+        print(f"  → Payload sender: {data['sender']}")
+        
         response = requests.post(url, json=data, headers=headers, timeout=60)
         
+        print(f"  → Respuesta status code: {response.status_code}")
+        print(f"  → Respuesta texto: {response.text}")
+        
         if response.status_code in [200, 201, 202]:
+            print("  → ✅ ENVÍO EXITOSO!")
             return True, 'Reporte enviado exitosamente'
         else:
-            return False, f"Error API: {response.text[:100]}"
+            print(f"  → ❌ ERROR EN API!")
+            return False, f"Error API: {response.text[:200]}"
             
     except Exception as e:
-        return False, str(e)
+        print(f"  → ❌ EXCEPCIÓN: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return False, f"Error interno: {str(e)}"
 
 
 def upload_csv(request):
