@@ -116,14 +116,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATIC_URL = 'static/'
 
-# Email Configuration (Brevo SMTP)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp-relay.brevo.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER')
-EMAIL_TIMEOUT = 60
+# Email Configuration (Brevo API HTTP)
+# El API Key es el que empieza con xsmtpsib-...
+BREVO_API_KEY = os.getenv('EMAIL_HOST_PASSWORD') 
+# El remitente DEBE ser el correo verificado en Brevo
+DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER', 'jmlnotificaciones@gmail.com')
 

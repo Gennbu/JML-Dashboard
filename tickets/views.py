@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.db import connection
+import requests
 import pandas as pd
 import re
 import threading
@@ -204,28 +205,27 @@ def obtener_alertas_padre_listos_para_cerrar():
 
 
 def enviar_correo_tickets_cerrar(destinatario_email=None):
-    print(f"Iniciando envío a: {destinatario_email}")
-    print(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
-    if settings.EMAIL_HOST_PASSWORD:
-        print(f"EMAIL_HOST_PASSWORD: {settings.EMAIL_HOST_PASSWORD[:10]}...")
+    print(f"--- Iniciando proceso de envío via API ---")
+    print(f"Remitente (Sender): {settings.DEFAULT_FROM_EMAIL}")
+    if settings.BREVO_API_KEY:
+        print(f"API Key detectada: {settings.BREVO_API_KEY[:10]}...")
     else:
-        print("EMAIL_HOST_PASSWORD: NO ESTÁ CONFIGURADA")
+        print("ERROR: No se detectó BREVO_API_KEY")
     
     if not destinatario_email:
         destinatario_email = settings.DEFAULT_FROM_EMAIL
     
     # Verificación de credenciales
-    user = getattr(settings, 'EMAIL_HOST_USER', None)
-    password = getattr(settings, 'EMAIL_HOST_PASSWORD', None)
+    api_key = getattr(settings, 'BREVO_API_KEY', None)
     
-    if not user or not password:
-        return False, 'Faltan las credenciales de correo (EMAIL_HOST_USER / EMAIL_HOST_PASSWORD) en las variables de entorno.'
+    if not api_key:
+        return False, 'Falta la API Key de Brevo (EMAIL_HOST_PASSWORD) en las variables de entorno.'
     
     try:
         cerrar_manual_resto, cerrar_manual_nz_au = obtener_alertas_padre_listos_para_cerrar()
         tickets_cerrar_full = cerrar_manual_resto + cerrar_manual_nz_au
         
-        # LIMITACIÓN DE SEGURIDAD: Si hay demasiados tickets, el correo pesará megas y fallará el envío
+        # LIMITACIÓN DE SEGURIDAD
         limite = 250
         tickets_cerrar = tickets_cerrar_full[:limite]
         mensaje_limitacion = ""
@@ -290,23 +290,36 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         if not destinatarios:
             return False, 'No se proporcionó ningún correo válido.'
         
-        # Envío robusto
-        try:
-            from django.core.mail import EmailMultiAlternatives
-            msg = EmailMultiAlternatives(
-                subject=f'JML Dashboard - {len(tickets_cerrar_full)} tickets listos para cerrar',
-                body='Por favor abre este correo en un cliente que soporte HTML.',
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=destinatarios
-            )
-            msg.attach_alternative(html_content, "text/html")
-            msg.send(fail_silently=False)
-            return True, f'Reporte enviado exitosamente a { ", ".join(destinatarios[:2])}{" y más" if len(destinatarios) > 2 else ""}'
-        except Exception as mail_error:
-            error_str = str(mail_error)
-            print(f"Error detallado de correo: {error_str}")
-            return False, f"Error al enviar: {error_str[:100]}"
+        # Migración a Brevo API HTTP (más confiable que SMTP en Render)
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "accept": "application/json",
+            "api-key": settings.BREVO_API_KEY,
+            "content-type": "application/json"
+        }
+        
+        # Preparar destinatarios en formato API de Brevo
+        to_list = [{"email": email} for email in destinatarios]
+        
+        data = {
+            "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "JML Dashboard"},
+            "to": to_list,
+            "subject": f"JML Dashboard - {len(tickets_cerrar_full)} tickets listos para cerrar",
+            "htmlContent": html_content
+        }
+        
+        print(f"Enviando via API a {len(destinatarios)} destinatarios...")
+        response = requests.post(url, json=data, headers=headers, timeout=30)
+        
+        if response.status_code in [200, 201, 202]:
+            print(f"API de Brevo aceptó el envío: {response.status_code}")
+            return True, f'Reporte enviado exitosamente via API'
+        else:
+            print(f"Error en API de Brevo: {response.status_code} - {response.text}")
+            return False, f"Error API Brevo ({response.status_code}): {response.text[:100]}"
+            
     except Exception as e:
+        print(f"Error excepcional en envío: {str(e)}")
         return False, str(e)
 
 
