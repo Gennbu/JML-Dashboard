@@ -19,7 +19,7 @@ except ImportError:
 SECRET_KEY = 'django-insecure-pehg0gi8uy3=br7$!kw1%$c87o98(v3j@%w)v@7&!^5$3!z510'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
 
@@ -115,10 +115,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # Email Configuration (Brevo API HTTP)
 # El API Key es el que empieza con xsmtpsib-...
-BREVO_API_KEY = os.getenv('EMAIL_HOST_PASSWORD') 
+_brevo_key = os.getenv('EMAIL_HOST_PASSWORD')
+BREVO_API_KEY = _brevo_key.strip() if _brevo_key else None
 # El remitente DEBE ser el correo verificado en Brevo
-DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER', 'jmlnotificaciones@gmail.com')
+_from_email = os.getenv('EMAIL_HOST_USER', 'jmlnotificaciones@gmail.com')
+DEFAULT_FROM_EMAIL = _from_email.strip() if _from_email else 'jmlnotificaciones@gmail.com'
 
