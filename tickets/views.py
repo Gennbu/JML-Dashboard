@@ -193,19 +193,26 @@ def obtener_alertas_padre_listos_para_cerrar():
 
 def enviar_correo_tickets_cerrar(destinatario_email=None):
     if not destinatario_email:
-        destinatario_email = settings.EMAIL_HOST_USER
+        destinatario_email = settings.DEFAULT_FROM_EMAIL
     
-    # Verificación más robusta de credenciales
-    email_user = getattr(settings, 'EMAIL_HOST_USER', None)
-    email_pass = getattr(settings, 'EMAIL_HOST_PASSWORD', None)
+    # Verificación de credenciales
+    user = getattr(settings, 'EMAIL_HOST_USER', None)
+    password = getattr(settings, 'EMAIL_HOST_PASSWORD', None)
     
-    if not email_user or not email_pass or email_user == 'tu_email@gmail.com' or email_pass == '':
-        return False, 'Configuración SMTP incompleta. Por favor, configura GMAIL_EMAIL y GMAIL_PASSWORD en tu archivo .env o variables de entorno.'
+    if not user or not password:
+        return False, 'Faltan las credenciales de correo (EMAIL_HOST_USER / EMAIL_HOST_PASSWORD) en las variables de entorno.'
     
     try:
         cerrar_manual_resto, cerrar_manual_nz_au = obtener_alertas_padre_listos_para_cerrar()
-        tickets_cerrar = cerrar_manual_resto + cerrar_manual_nz_au
+        tickets_cerrar_full = cerrar_manual_resto + cerrar_manual_nz_au
         
+        # LIMITACIÓN DE SEGURIDAD: Si hay demasiados tickets, el correo pesará megas y fallará el envío
+        limite = 250
+        tickets_cerrar = tickets_cerrar_full[:limite]
+        mensaje_limitacion = ""
+        if len(tickets_cerrar_full) > limite:
+            mensaje_limitacion = f"<p style='color:red;'><strong>Nota:</strong> Se muestran solo los primeros {limite} tickets de un total de {len(tickets_cerrar_full)}. Revisa el Dashboard para ver la lista completa.</p>"
+
         html_content = f"""
         <html>
         <head>
@@ -231,10 +238,11 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         <body>
         <div class="container">
         <div class="header"><h1>Reporte de Tickets Listos para Cerrar</h1></div>
-        <div class="stat-box"><div class="stat-number">{len(tickets_cerrar)}</div><div>Listos para cerrar</div></div>
-        <p style="font-size:12px;color:#666666;margin-top:8px;">Este correo solo incluye tickets padre que tienen todos sus hijos cerrados y estan listos para cierre manual.</p>
+        <div class="stat-box"><div class="stat-number">{len(tickets_cerrar_full)}</div><div>Listos para cerrar</div></div>
+        {mensaje_limitacion}
+        <p style="font-size:12px;color:#666666;margin-top:8px;">Este correo incluye tickets padre que tienen todos sus hijos cerrados y están listos para cierre manual.</p>
         <table class="data-table">
-        <thead><tr><th>ID Ticket</th><th>Nombre</th><th>Tipo</th><th>Dias Abierto</th><th>Hijos Cerrados</th></tr></thead>
+        <thead><tr><th>ID Ticket</th><th>Nombre</th><th>Tipo</th><th>Días Abierto</th><th>Hijos Cerrados</th></tr></thead>
         <tbody>
         """
         for ticket in tickets_cerrar:
@@ -253,7 +261,7 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         html_content += f"""
         </tbody>
         </table>
-        <div class="footer"><p>Este es un correo automatico generado por JML Dashboard.</p><p>Generado el: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}</p></div>
+        <div class="footer"><p>Este es un correo automático generado por JML Dashboard.</p><p>Generado el: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}</p></div>
         </div>
         </body>
         </html>
@@ -261,31 +269,24 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         
         destinatarios = parse_destinatarios_email(destinatario_email)
         if not destinatarios:
-            return False, 'No se proporciono ningun correo valido.'
+            return False, 'No se proporcionó ningún correo válido.'
         
-        # Envío robusto para Render, con fail_silently=True y EmailMultiAlternatives
+        # Envío robusto
         try:
             from django.core.mail import EmailMultiAlternatives
             msg = EmailMultiAlternatives(
-                subject=f'JML Dashboard - {len(tickets_cerrar)} tickets listos para cerrar',
+                subject=f'JML Dashboard - {len(tickets_cerrar_full)} tickets listos para cerrar',
                 body='Por favor abre este correo en un cliente que soporte HTML.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=destinatarios
             )
             msg.attach_alternative(html_content, "text/html")
-            msg.send(fail_silently=False) # Cambiamos a False para ver el error real en el bloque except
-            return True, f'Reporte enviado exitosamente a {", ".join(destinatarios[:2])}{" y más" if len(destinatarios) > 2 else ""}'
+            msg.send(fail_silently=False)
+            return True, f'Reporte enviado exitosamente a { ", ".join(destinatarios[:2])}{" y más" if len(destinatarios) > 2 else ""}'
         except Exception as mail_error:
-            # Capturamos el error real y lo mostramos al usuario
             error_str = str(mail_error)
             print(f"Error detallado de correo: {error_str}")
-            if "Authentication failed" in error_str or "535" in error_str:
-                msg = "Error de autenticación: Verifica tu GMAIL_PASSWORD (debe ser una 'Contraseña de Aplicación')."
-            elif "Connection timed out" in error_str:
-                msg = "Error de conexión: Google está bloqueando el acceso desde Render o el puerto 587 está cerrado."
-            else:
-                msg = f"Error SMTP: {error_str[:100]}"
-            return False, msg
+            return False, f"Error al enviar: {error_str[:100]}"
     except Exception as e:
         return False, str(e)
 
