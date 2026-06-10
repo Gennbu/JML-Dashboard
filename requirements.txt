@@ -3,7 +3,6 @@ certifi==2026.5.20
 charset-normalizer==3.4.7
 Django==5.2.7
 django-anymail==15.0
-dj-database-url==2.2.0
 gunicorn==26.0.0
 idna==3.18
 numpy==2.4.3
