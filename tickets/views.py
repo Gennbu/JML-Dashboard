@@ -119,74 +119,85 @@ def calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes):
 
 def obtener_alertas_padre_listos_para_cerrar():
     hoy = timezone.now().date()
-    # Definimos estados cerrados de forma estándar
-    estados_cerrados = ['closed', 'resolved', 'cerrado', 'completed', 'cancelled', 'cancelado', 'cierre manual']
+    # Definimos estados cerrados de forma estándar (agregamos variaciones de mayúsculas por seguridad)
+    estados_cerrados = ['closed', 'resolved', 'cerrado', 'completed', 'cancelled', 'cancelado', 'cierre manual',
+                        'Closed', 'Resolved', 'Cerrado', 'Completed', 'Cancelled', 'Cancelado', 'Cierre Manual']
     
-    # 1. Obtener todos los IDs de tickets padre que están abiertos
+    # 1. Obtener padres abiertos (que no estén en estados cerrados)
+    # Usamos __in para que sea más eficiente en la BD
     padres_abiertos = Ticket.objects.filter(
         Q(linked_request_id__isnull=True) | Q(linked_request_id='')
     ).exclude(
         request_status__in=estados_cerrados
     )
     
-    # 2. Obtener todos los hijos que pertenecen a estos padres abiertos
-    ids_padres_abiertos = padres_abiertos.values_list('request_id', flat=True)
-    hijos_de_padres_abiertos = Ticket.objects.filter(
-        linked_request_id__in=ids_padres_abiertos
+    # 2. Encontrar padres que tienen hijos abiertos
+    # Esto es mucho más rápido que procesar 10k tickets en memoria
+    padres_con_hijos_abiertos = Ticket.objects.exclude(
+        Q(linked_request_id__isnull=True) | Q(linked_request_id='')
+    ).exclude(
+        request_status__in=estados_cerrados
+    ).values_list('linked_request_id', flat=True).distinct()
+    
+    # 3. Filtrar: Padres que NO están en la lista de los que tienen hijos abiertos
+    # Pero que SÍ tienen al menos un hijo (para no cerrar padres sin tareas)
+    padres_con_al_menos_un_hijo = Ticket.objects.exclude(
+        Q(linked_request_id__isnull=True) | Q(linked_request_id='')
+    ).values_list('linked_request_id', flat=True).distinct()
+    
+    padres_listos = padres_abiertos.filter(
+        request_id__in=padres_con_al_menos_un_hijo
+    ).exclude(
+        request_id__in=padres_con_hijos_abiertos
     )
     
-    # Agrupamos hijos por padre para procesar en memoria de forma eficiente
-    hijos_por_padre = defaultdict(list)
-    for hijo in hijos_de_padres_abiertos:
-        hijos_por_padre[hijo.linked_request_id].append(hijo)
+    # 4. Obtener el conteo de hijos cerrados para cada padre listo (usando agregación)
+    from django.db.models import Count
+    conteos_hijos = Ticket.objects.filter(
+        linked_request_id__in=padres_listos.values_list('request_id', flat=True)
+    ).values('linked_request_id').annotate(total=Count('id'))
+    
+    hijos_map = {item['linked_request_id']: item['total'] for item in conteos_hijos}
     
     cerrar_manual_resto = []
     cerrar_manual_nz_au = []
     
-    for padre in padres_abiertos:
-        hijos_del_padre = hijos_por_padre.get(padre.request_id, [])
+    for padre in padres_listos:
+        hijos_cerrados_count = hijos_map.get(padre.request_id, 0)
         
-        # Un padre está listo para cerrar SI tiene hijos Y todos sus hijos están cerrados
-        if not hijos_del_padre:
-            continue
-            
-        hijos_abiertos = [h for h in hijos_del_padre if h.request_status.lower() not in estados_cerrados]
+        dias_abierto = 0
+        if padre.created_time:
+            # Aseguramos que created_time sea date para la resta
+            fecha_creacion = padre.created_time.date() if hasattr(padre.created_time, 'date') else padre.created_time
+            dias_abierto = (hoy - fecha_creacion).days
         
-        if len(hijos_abiertos) == 0:
-            # Todos los hijos están cerrados
-            hijos_cerrados_count = len(hijos_del_padre)
-            
-            dias_abierto = 0
-            if padre.created_time:
-                dias_abierto = (hoy - padre.created_time).days
-            
-            region = 'nz_au' if es_nz_o_australia(padre.subject) else 'resto'
-            tipo_value = 'Joiner' if 'Joiner' in padre.subject else ('Mover' if 'Mover' in padre.subject else 'Leaver')
-            
-            alerta = {
-                'padre': padre,
-                'request_id': padre.request_id,
-                'nombre': extraer_nombre(padre.subject),
-                'subject_completo': padre.subject,
-                'tipo_alerta': 'cerrar_manual',
-                'severidad': 'cerrar',
-                'dias_abierto': dias_abierto,
-                'total_hijos': hijos_cerrados_count,
-                'hijos_pendientes': 0,
-                'hijos': [],
-                'hijos_cerrados_count': hijos_cerrados_count,
-                'tipo_jml': tipo_value,
-                'tipo': tipo_value,
-                'mensaje': 'Todos los hijos cerrados - Cerrar padre manualmente',
-                'dias_limite': None,
-                'es_nz_au': region == 'nz_au',
-                'region': region,
-            }
-            
-            if region == 'nz_au':
-                cerrar_manual_nz_au.append(alerta)
-            else:
-                cerrar_manual_resto.append(alerta)
+        region = 'nz_au' if es_nz_o_australia(padre.subject) else 'resto'
+        tipo_value = 'Joiner' if 'Joiner' in padre.subject or 'joiner' in padre.subject.lower() else ('Mover' if 'Mover' in padre.subject or 'mover' in padre.subject.lower() else 'Leaver')
+        
+        alerta = {
+            'padre': padre,
+            'request_id': padre.request_id,
+            'nombre': extraer_nombre(padre.subject),
+            'subject_completo': padre.subject,
+            'tipo_alerta': 'cerrar_manual',
+            'severidad': 'cerrar',
+            'dias_abierto': dias_abierto,
+            'total_hijos': hijos_cerrados_count,
+            'hijos_pendientes': 0,
+            'hijos': [],
+            'hijos_cerrados_count': hijos_cerrados_count,
+            'tipo_jml': tipo_value,
+            'tipo': tipo_value,
+            'mensaje': 'Todos los hijos cerrados - Listo para cierre manual',
+            'dias_limite': None,
+            'es_nz_au': region == 'nz_au',
+            'region': region,
+        }
+        
+        if region == 'nz_au':
+            cerrar_manual_nz_au.append(alerta)
+        else:
+            cerrar_manual_resto.append(alerta)
     
     return cerrar_manual_resto, cerrar_manual_nz_au
 
