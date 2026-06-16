@@ -347,11 +347,11 @@ def upload_csv(request):
                     header_row = i
                     break
             
-            # Usamos un chunksize más pequeño (1000) para no saturar la RAM de Render
+            # Usamos un chunksize aún más pequeño (500) para no saturar con 25k tickets
             chunks = pd.read_csv(
                 csv_file,
                 skiprows=header_row,
-                chunksize=1000,
+                chunksize=500,
                 dtype=str, # Leemos todo como string primero para velocidad
                 low_memory=False,
             )
