@@ -480,12 +480,16 @@ def alertas(request):
             Q(linked_request_id__isnull=True) | Q(linked_request_id='') | Q(linked_request_id='None') | Q(linked_request_id='nan')
         )
         
+        print(f"--- Total de tickets hijos: {hijos_qs.count()} ---")
+        
         hijos_por_padre = defaultdict(list)
         for hijo in hijos_qs:
             lid = str(hijo.linked_request_id).strip()
             # EVITAR que un ticket sea hijo de sí mismo (esto rompía la lógica de cierre)
             if lid != str(hijo.request_id).strip():
                 hijos_por_padre[lid].append(hijo)
+                
+        print(f"--- Padres que tienen al menos un hijo: {len(hijos_por_padre)} ---")
         
         hoy = timezone.now().date()
         
@@ -494,9 +498,19 @@ def alertas(request):
         cerrar_manual_nz_au = []
         cerrar_manual_resto = []
         
-        for padre in padres_qs:
+        # Contadores de debug
+        debug_contador_padres_con_hijos = 0
+        debug_contador_padres_sin_hijos = 0
+        debug_contador_padres_listos_para_cerrar = 0
+        
+        for idx, padre in enumerate(padres_qs):
             pid = str(padre.request_id).strip()
             todos_hijos = hijos_por_padre.get(pid, [])
+            
+            if len(todos_hijos) > 0:
+                debug_contador_padres_con_hijos += 1
+            else:
+                debug_contador_padres_sin_hijos += 1
             
             # Filtramos hijos abiertos/cerrados usando la misma lógica robusta
             hijos_abiertos = []
@@ -504,6 +518,18 @@ def alertas(request):
                 st = str(h.request_status or '').strip().lower()
                 if st not in estados_base:
                     hijos_abiertos.append(h)
+            
+            # Si es un candidato a cerrar, imprimir detalles
+            if len(todos_hijos) > 0 and len(hijos_abiertos) == 0:
+                debug_contador_padres_listos_para_cerrar += 1
+                # Imprimir solo los primeros 5 para no saturar
+                if debug_contador_padres_listos_para_cerrar <= 5:
+                    print(f"--- CANDIDATO # {debug_contador_padres_listos_para_cerrar}: {pid} ---")
+                    print(f"    Status padre: {padre.request_status}")
+                    print(f"    Total hijos: {len(todos_hijos)}")
+                    for h_idx, h in enumerate(todos_hijos):
+                        st = str(h.request_status or '').strip().lower()
+                        print(f"    Hijo {h_idx}: {h.request_id} - Status: '{h.request_status}' (norm: '{st}')")
             
             hijos_cerrados_count = len(todos_hijos) - len(hijos_abiertos)
             
@@ -554,6 +580,11 @@ def alertas(request):
         
         todas_las_alertas = alertas_resto + alertas_nz_au + cerrar_manual_resto + cerrar_manual_nz_au
         
+        print("--- DEBUG TOTALES ---")
+        print(f"Padres abiertos: {padres_qs.count()}")
+        print(f"Padres abiertos CON hijos: {debug_contador_padres_con_hijos}")
+        print(f"Padres abiertos SIN hijos: {debug_contador_padres_sin_hijos}")
+        print(f"Padres abiertos listos para cerrar: {debug_contador_padres_listos_para_cerrar}")
         print(f"Total alertas generadas: {len(todas_las_alertas)}")
         
         context = {
