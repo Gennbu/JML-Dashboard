@@ -382,6 +382,8 @@ def upload_csv(request):
                     if actual_col:
                         chunk[actual_col] = pd.to_datetime(chunk[actual_col], errors='coerce').dt.date
                 
+
+                
                 tickets_to_create = []
                 # El loop ahora solo crea objetos, no procesa datos pesados
                 for row in chunk.itertuples(index=False):
@@ -401,8 +403,8 @@ def upload_csv(request):
                         lid = None
                     else:
                         lid = str(lid).strip()
-                        if lid == rid: lid = None # Evitar auto-vinculación
-                    
+                        if lid == rid: lid = None
+
                     tickets_to_create.append(Ticket(
                         request_id=rid,
                         subject=sub,
