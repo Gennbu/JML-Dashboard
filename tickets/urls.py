@@ -6,4 +6,5 @@ urlpatterns = [
     path('upload/', views.upload_csv, name='upload_csv'),
     path('alertas/', views.alertas, name='alertas'),
     path('enviar-correo/', views.enviar_correo_endpoint, name='enviar_correo'),
+    path('exportar-excel/', views.exportar_excel_listos_cerrar, name='exportar_excel'),
 ]

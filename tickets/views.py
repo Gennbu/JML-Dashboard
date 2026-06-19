@@ -12,6 +12,7 @@ import pandas as pd
 import re
 import threading
 import warnings
+from io import BytesIO
 from .models import Ticket
 from collections import defaultdict
 
@@ -48,6 +49,36 @@ def extraer_nombre(subject):
 
 def es_nz_o_australia(subject):
     return bool(re.search(r'\b(New Zealand|Australia|NZ)\b', subject, re.IGNORECASE))
+
+
+def normalizar_subject(subject):
+    if not subject:
+        return ''
+    normalized = str(subject).lower()
+    normalized = normalized.replace('–', '-').replace('—', '-')
+    normalized = re.sub(r'[^a-z0-9]+', ' ', normalized)
+    return re.sub(r'\s+', ' ', normalized).strip()
+
+
+def es_hardware_leaver_subject(subject):
+    subject_normalizado = normalizar_subject(subject)
+    patrones_hardware = [
+        'asset tablet leaver request',
+        'equipment return leaver',
+        'contractor equipment return leaver',
+        'asset cell phone leaver request',
+        'mobile phone leaver request',
+        'laptop leaver request',
+        'contractor laptop leaver request',
+        'contractor laptop return',
+        'asset retrieval leaver request',
+        'contractor laptop requirement',
+        'laptop requirement',
+        'asset ip telephony leaver request',
+        'asset laptop leaver request',
+        'asset desktop leaver request',
+    ]
+    return any(patron in subject_normalizado for patron in patrones_hardware)
 
 
 def calcular_prioridad(padre, dias_abierto, total_hijos, hijos_pendientes):
@@ -328,6 +359,76 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         return False, f"Error interno: {str(e)}"
 
 
+def exportar_excel_listos_cerrar(request):
+    cerrar_manual_resto, cerrar_manual_nz_au = obtener_alertas_padre_listos_para_cerrar()
+
+    def construir_filas(alertas, region_label):
+        filas = []
+        for ticket in alertas:
+            padre = ticket['padre']
+            fecha_creacion = ''
+            if padre.created_time:
+                fecha_creacion = padre.created_time.strftime('%Y-%m-%d %H:%M') if hasattr(padre.created_time, 'strftime') else str(padre.created_time)
+
+            filas.append({
+                'Request ID': ticket['request_id'],
+                'Nombre': ticket['nombre'],
+                'Subject completo': ticket['subject_completo'],
+                'Tipo JML': ticket['tipo_jml'],
+                'Estado padre': padre.request_status,
+                'Fecha creacion': fecha_creacion,
+                'Dias abierto': ticket['dias_abierto'],
+                'Total hijos': ticket['total_hijos'],
+                'Hijos cerrados': ticket['hijos_cerrados_count'],
+                'Hijos pendientes': ticket['hijos_pendientes'],
+                'Region': region_label,
+                'Mensaje': ticket['mensaje'],
+            })
+        return filas
+
+    filas_resto = construir_filas(cerrar_manual_resto, 'General')
+    filas_nz_au = construir_filas(cerrar_manual_nz_au, 'NZ_AU')
+
+    output = BytesIO()
+    nombre_archivo = f"tickets_listos_cerrar_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        columnas = [
+            'Request ID', 'Nombre', 'Subject completo', 'Tipo JML', 'Estado padre',
+            'Fecha creacion', 'Dias abierto', 'Total hijos', 'Hijos cerrados',
+            'Hijos pendientes', 'Region', 'Mensaje'
+        ]
+
+        df_resto = pd.DataFrame(filas_resto, columns=columnas)
+        df_nz_au = pd.DataFrame(filas_nz_au, columns=columnas)
+        df_total = pd.DataFrame(filas_resto + filas_nz_au, columns=columnas)
+
+        df_total.to_excel(writer, index=False, sheet_name='Listos_Cerrar')
+        df_resto.to_excel(writer, index=False, sheet_name='General')
+        df_nz_au.to_excel(writer, index=False, sheet_name='NZ_AU')
+
+        for sheet_name, dataframe in {
+            'Listos_Cerrar': df_total,
+            'General': df_resto,
+            'NZ_AU': df_nz_au,
+        }.items():
+            worksheet = writer.sheets[sheet_name]
+            for idx, column in enumerate(dataframe.columns, 1):
+                max_len = max(
+                    [len(str(column))] +
+                    [len(str(value)) for value in dataframe[column].fillna('').tolist()]
+                ) if not dataframe.empty else len(str(column))
+                worksheet.column_dimensions[chr(64 + idx)].width = min(max(max_len + 2, 14), 60)
+
+    output.seek(0)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+    return response
+
+
 def upload_csv(request):
     if request.method == 'POST' and request.FILES.get('csv_file'):
         csv_file = request.FILES['csv_file']
@@ -405,11 +506,32 @@ def upload_csv(request):
                         lid = str(lid).strip()
                         if lid == rid: lid = None
 
+                    subject = sub+ str(getattr(row, 'Subject', '' )).strip()
+
+                    HARDWARE_LEAVER_TERMS = [
+                        'Asset Tablet - Leaver Request',
+                        'Equipment Return - Leaver',
+                        'Contractor - Equipment Return - Leaver',
+                        'Asset Cell Phone - Leaver Request',
+                        'Mobile phone Leaver Request',
+                        'Laptop Leaver Request',
+                        'Contractor - Laptop Leaver Request',
+                        'Contractor – Laptop return',
+                        'Asset Retrieval - Leaver Request',
+                        'Asset IP Telephony - Leaver Request',
+                        'Asset Laptop - Leaver Request',
+                        'Asset Desktop - Leaver Request'
+                    ]
+
+                    if 'Leaver' in subject:
+                        if any(term in subject for term in HARDWARE_LEAVER_TERMS):
+                            continue
+
                     tickets_to_create.append(Ticket(
                         request_id=rid,
                         subject=sub,
                         request_status=status,
-                        technician=str(getattr(row, 'technician', '')).strip() if pd.notna(getattr(row, 'technician', None)) else None,
+                        technician= str(getattr(row, 'technician', '')).strip() if pd.notna(getattr(row, 'technician', None)) else None,
                         created_time=getattr(row, 'created_time', getattr(row, 'created_at', None)),
                         last_updated=getattr(row, 'last_updated_time', getattr(row, 'last_updated', None)),
                         resolved_time=getattr(row, 'resolved_time', getattr(row, 'resolved_at', None)),
@@ -448,105 +570,127 @@ def alertas(request):
     try:
         total_tickets = Ticket.objects.count()
         print(f"--- Dashboard Alertas: {total_tickets} tickets en total ---")
-        
+
         if total_tickets == 0:
             return render(request, 'tickets/alertas.html', {
                 'todas_las_alertas': [],
                 'total_tickets': 0,
                 'total_padres': 0,
-                'joiners': 0, 'movers': 0, 'leavers': 0, 'total_cerrar': 0
+                'joiners': 0,
+                'movers': 0,
+                'leavers': 0,
+                'total_cerrar': 0,
+                'alertas_hardware_leaver': [],
+                'alertas_local_apps_nz_au': [],
+                'alertas_sin_padre': [],
             })
 
-        # Estadísticas robustas (case-insensitive para el subject)
         joiners = Ticket.objects.filter(subject__icontains='Joiner').count()
         movers = Ticket.objects.filter(subject__icontains='Mover').count()
         leavers = Ticket.objects.filter(subject__icontains='Leaver').count()
-        
-        # Estados cerrados (Normalizados y ampliados)
+
         estados_base = ['closed', 'resolved', 'cerrado', 'completed', 'cancelled', 'cancelado', 'cierre manual']
         estados_busqueda = []
         for s in estados_base:
             estados_busqueda.extend([s, s.capitalize(), s.upper()])
-        
-        # 1. Obtenemos padres abiertos
-        # Un padre es aquel que NO tiene linked_request_id
+
         padres_qs = Ticket.objects.filter(
-            Q(linked_request_id__isnull=True) | Q(linked_request_id='') | Q(linked_request_id='None') | Q(linked_request_id='nan')
+            Q(linked_request_id__isnull=True) |
+            Q(linked_request_id='') |
+            Q(linked_request_id='None') |
+            Q(linked_request_id='nan')
         ).exclude(request_status__in=estados_busqueda)
-        
-        print(f"Padres abiertos detectados: {padres_qs.count()}")
-        
-        # 2. Obtenemos TODOS los hijos para mapear correctamente
-        # Traemos todos los que TENGAN linked_request_id
+
         hijos_qs = Ticket.objects.exclude(
-            Q(linked_request_id__isnull=True) | Q(linked_request_id='') | Q(linked_request_id='None') | Q(linked_request_id='nan')
+            Q(linked_request_id__isnull=True) |
+            Q(linked_request_id='') |
+            Q(linked_request_id='None') |
+            Q(linked_request_id='nan')
         )
-        
-        print(f"--- Total de tickets hijos: {hijos_qs.count()} ---")
-        
+
         hijos_por_padre = defaultdict(list)
         for hijo in hijos_qs:
             lid = str(hijo.linked_request_id).strip()
-            # EVITAR que un ticket sea hijo de sí mismo (esto rompía la lógica de cierre)
             if lid != str(hijo.request_id).strip():
                 hijos_por_padre[lid].append(hijo)
-                
-        print(f"--- Padres que tienen al menos un hijo: {len(hijos_por_padre)} ---")
-        
+
+        padres_ids = set(padres_qs.values_list('request_id', flat=True))
         hoy = timezone.now().date()
-        
+
         alertas_nz_au = []
         alertas_resto = []
-        cerrar_manual_nz_au = []
         cerrar_manual_resto = []
-        
-        # Contadores de debug
-        debug_contador_padres_con_hijos = 0
-        debug_contador_padres_sin_hijos = 0
-        debug_contador_padres_listos_para_cerrar = 0
-        
-        for idx, padre in enumerate(padres_qs):
+        cerrar_manual_nz_au = []
+        alertas_hardware_leaver = []
+        alertas_local_apps_nz_au = []
+        alertas_sin_padre = []
+
+        hijos_con_padre_inexistente = hijos_qs.exclude(linked_request_id__in=padres_ids)
+
+        for hijo in hijos_con_padre_inexistente:
+            dias_abierto = 0
+            if hijo.created_time:
+                fecha_creacion = hijo.created_time.date() if hasattr(hijo.created_time, 'date') else hijo.created_time
+                dias_abierto = (hoy - fecha_creacion).days
+
+            alerta_huerfana = {
+                'padre': hijo,
+                'request_id': hijo.request_id,
+                'nombre': extraer_nombre(hijo.subject),
+                'subject_completo': hijo.subject,
+                'tipo_alerta': 'sin_padre',
+                'severidad': 'media',
+                'dias_abierto': dias_abierto,
+                'total_hijos': 0,
+                'hijos_pendientes': 0,
+                'hijos': [],
+                'hijos_cerrados_count': 0,
+                'tipo_jml': 'Leaver' if 'leaver' in str(hijo.subject).lower() else 'Otro',
+                'mensaje': 'Ticket huerfano - sin padre linkeado',
+                'dias_limite': None,
+                'es_nz_au': es_nz_o_australia(hijo.subject),
+                'region': 'nz_au' if es_nz_o_australia(hijo.subject) else 'resto',
+            }
+
+            # Hardware Leaver no sigue la misma logica de anclaje; si el subject coincide,
+            # debe ir a su pestaña especial y no contaminar "Sin Padre".
+            if es_hardware_leaver_subject(hijo.subject):
+                alerta_huerfana['tipo_alerta'] = 'hardware_leaver'
+                alerta_huerfana['mensaje'] = 'Hardware Leaver - ticket no anclado por logica de negocio'
+                alertas_hardware_leaver.append(alerta_huerfana)
+            else:
+                alertas_sin_padre.append(alerta_huerfana)
+
+        for padre in padres_qs:
             pid = str(padre.request_id).strip()
             todos_hijos = hijos_por_padre.get(pid, [])
-            
-            if len(todos_hijos) > 0:
-                debug_contador_padres_con_hijos += 1
-            else:
-                debug_contador_padres_sin_hijos += 1
-            
-            # Filtramos hijos abiertos/cerrados usando la misma lógica robusta
+
             hijos_abiertos = []
             for h in todos_hijos:
                 st = str(h.request_status or '').strip().lower()
                 if st not in estados_base:
                     hijos_abiertos.append(h)
-            
-            # Si es un candidato a cerrar, imprimir detalles
-            if len(todos_hijos) > 0 and len(hijos_abiertos) == 0:
-                debug_contador_padres_listos_para_cerrar += 1
-                # Imprimir solo los primeros 5 para no saturar
-                if debug_contador_padres_listos_para_cerrar <= 5:
-                    print(f"--- CANDIDATO # {debug_contador_padres_listos_para_cerrar}: {pid} ---")
-                    print(f"    Status padre: {padre.request_status}")
-                    print(f"    Total hijos: {len(todos_hijos)}")
-                    for h_idx, h in enumerate(todos_hijos):
-                        st = str(h.request_status or '').strip().lower()
-                        print(f"    Hijo {h_idx}: {h.request_id} - Status: '{h.request_status}' (norm: '{st}')")
-            
+
+            subject_lower = padre.subject.lower()
+            es_hardware_leaver = es_hardware_leaver_subject(padre.subject)
+
+            es_local_apps_nz_au = False
+            if 'local apps' in subject_lower and es_nz_o_australia(padre.subject):
+                es_local_apps_nz_au = True
+
+            es_nz_au = es_nz_o_australia(padre.subject)
+
             hijos_cerrados_count = len(todos_hijos) - len(hijos_abiertos)
-            
-            # Cálculo de días abierto
+
             dias_abierto = 0
             if padre.created_time:
-                # Manejo seguro de DateTime vs Date
                 fecha_p = padre.created_time.date() if hasattr(padre.created_time, 'date') else padre.created_time
                 dias_abierto = (hoy - fecha_p).days
-            
-            region = 'nz_au' if es_nz_o_australia(padre.subject) else 'resto'
-            
-            # Calculamos prioridad
+
+            region = 'nz_au' if es_nz_au else 'resto'
+
             prioridad = calcular_prioridad(padre, dias_abierto, len(todos_hijos), len(hijos_abiertos))
-            
+
             if prioridad:
                 alerta = {
                     'padre': padre,
@@ -558,37 +702,44 @@ def alertas(request):
                     'dias_abierto': dias_abierto,
                     'total_hijos': len(todos_hijos),
                     'hijos_pendientes': len(hijos_abiertos),
-                    'hijos': hijos_abiertos[:10], # Solo mostramos los primeros 10 abiertos
+                    'hijos': hijos_abiertos[:10],
                     'hijos_cerrados_count': hijos_cerrados_count,
                     'tipo_jml': prioridad['tipo_jml'],
                     'mensaje': prioridad['mensaje'],
                     'dias_limite': prioridad['dias_limite'],
-                    'es_nz_au': region == 'nz_au',
+                    'es_nz_au': es_nz_au,
                     'region': region,
                 }
-                
-                # Clasificación por tipo y región
+
+                # PRIMERO chequear si es LISTO PARA CERRAR (prioridad máxima)
                 if prioridad['tipo_alerta'] == 'cerrar_manual':
-                    if region == 'nz_au': cerrar_manual_nz_au.append(alerta)
-                    else: cerrar_manual_resto.append(alerta)
+                    if region == 'nz_au':
+                        cerrar_manual_nz_au.append(alerta)
+                    else:
+                        cerrar_manual_resto.append(alerta)
+                # Si NO es listo para cerrar, entonces chequear categorías especiales
+                elif es_hardware_leaver:
+                    alertas_hardware_leaver.append(alerta)
+                elif es_local_apps_nz_au:
+                    alertas_local_apps_nz_au.append(alerta)
                 else:
-                    if region == 'nz_au': alertas_nz_au.append(alerta)
-                    else: alertas_resto.append(alerta)
-        
-        # Ordenamiento final
+                    if region == 'nz_au':
+                        alertas_nz_au.append(alerta)
+                    else:
+                        alertas_resto.append(alerta)
+
         sev_map = {'critica': 0, 'alta': 1, 'media': 2, 'baja': 3, 'cerrar': 4}
         alertas_nz_au.sort(key=lambda x: (sev_map.get(x['severidad'], 4), -x['dias_abierto']))
         alertas_resto.sort(key=lambda x: (sev_map.get(x['severidad'], 4), -x['dias_abierto']))
-        
+        alertas_hardware_leaver.sort(key=lambda x: (sev_map.get(x['severidad'], 4), -x['dias_abierto']))
+        alertas_local_apps_nz_au.sort(key=lambda x: (sev_map.get(x['severidad'], 4), -x['dias_abierto']))
+        alertas_sin_padre.sort(key=lambda x: (sev_map.get(x['severidad'], 4), -x['dias_abierto']))
+
         todas_las_alertas = alertas_resto + alertas_nz_au + cerrar_manual_resto + cerrar_manual_nz_au
-        
-        print("--- DEBUG TOTALES ---")
-        print(f"Padres abiertos: {padres_qs.count()}")
-        print(f"Padres abiertos CON hijos: {debug_contador_padres_con_hijos}")
-        print(f"Padres abiertos SIN hijos: {debug_contador_padres_sin_hijos}")
-        print(f"Padres abiertos listos para cerrar: {debug_contador_padres_listos_para_cerrar}")
-        print(f"Total alertas generadas: {len(todas_las_alertas)}")
-        
+
+        total_cerrar_manual_resto = len(cerrar_manual_resto)
+        total_cerrar_manual_nz_au = len(cerrar_manual_nz_au)
+
         context = {
             'todas_las_alertas': todas_las_alertas,
             'alertas_resto': alertas_resto,
@@ -599,10 +750,22 @@ def alertas(request):
             'joiners': joiners,
             'movers': movers,
             'leavers': leavers,
-            'total_cerrar': len(cerrar_manual_resto) + len(cerrar_manual_nz_au),
-        }
+            'total_cerrar': total_cerrar_manual_resto + total_cerrar_manual_nz_au,
+            'alertas_hardware_leaver': alertas_hardware_leaver,
+            'alertas_local_apps_nz_au': alertas_local_apps_nz_au,
+            'alertas_sin_padre': alertas_sin_padre,
+
+            'alertas_hardware_leaver_count': len(alertas_hardware_leaver),
+            'alertas_local_apps': alertas_local_apps_nz_au,
+            'alertas_local_apps_count': len(alertas_local_apps_nz_au),
+            'alertas_sin_padre_count': len(alertas_sin_padre),
         
+            'alertas_resto_count': len(alertas_resto),  
+            'alertas_nz_au_count': len(alertas_nz_au),
+        }
+
         return render(request, 'tickets/alertas.html', context)
+
     except Exception as e:
         import traceback
         print(f"ERROR EN ALERTAS: {str(e)}")

@@ -240,6 +240,113 @@
             border: 1px solid rgba(59, 130, 246, 0.25);
         }
 
+        /* ========== PESTAÑAS ========== */
+        .tabs-wrapper {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--dusty-denim);
+            margin-bottom: 32px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(13, 27, 42, 0.06);
+        }
+
+        .tabs-header {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--alabaster-grey);
+            background: var(--alabaster-grey);
+            padding: 0 16px;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+        }
+
+        .tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 20px;
+            background: transparent;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--dusk-blue);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .tab-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+            flex-shrink: 0;
+        }
+
+        .tab-btn:hover {
+            color: var(--ink-black);
+            background: rgba(13, 27, 42, 0.04);
+        }
+
+        .tab-btn.active {
+            color: var(--prussian-blue);
+            border-bottom-color: var(--prussian-blue);
+            background: white;
+        }
+
+        .badge-count {
+            background: var(--dusty-denim);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .tab-btn.active .badge-count {
+            background: var(--prussian-blue);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 28px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ink-black);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-content>.section-title:not(:first-child) {
+            margin-top: 32px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 18px;
+            background: var(--prussian-blue);
+            border-radius: 2px;
+        }
+
+        /* ========== FIN PESTAÑAS ========== */
+
         .filters-section {
             background: white;
             border-radius: 16px;
@@ -365,11 +472,16 @@
         }
 
         .alerta-card {
-            border-bottom: 1px solid var(--alabaster-grey);
+            background: #fff;
+            border: 1px solid rgba(119, 141, 169, 0.22);
+            border-radius: 14px;
+            margin-bottom: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(13, 27, 42, 0.04);
         }
 
         .alerta-card:last-child {
-            border-bottom: none;
+            margin-bottom: 0;
         }
 
         .alerta-header {
@@ -385,6 +497,11 @@
 
         .alerta-header:hover {
             background: rgba(13, 27, 42, 0.02);
+        }
+
+        .empty-state {
+            margin-top: 8px;
+            padding: 28px 20px;
         }
 
         .alerta-info {
@@ -448,6 +565,16 @@
         .tipo-Leaver {
             background: rgba(239, 68, 68, 0.1);
             color: var(--red-500);
+        }
+
+        .region-badge {
+            background: linear-gradient(135deg, var(--prussian-blue) 0%, var(--dusk-blue) 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
         }
 
         .ticket-id {
@@ -703,6 +830,16 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
+
+            .tabs-header {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+            }
+
+            .tab-btn {
+                font-size: 12px;
+                padding: 10px 14px;
+            }
         }
     </style>
 </head>
@@ -819,13 +956,14 @@
                     <p style="font-size: 12px; color: var(--dusty-denim);">Envía la lista de tickets listos para cerrar
                         a cualquier destinatario.</p>
                 </div>
+                <a href="{% url 'exportar_excel' %}"
+                    style="padding: 10px 20px; background: white; color: var(--prussian-blue); border: 1px solid var(--prussian-blue); border-radius: 10px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center;">
+                    Exportar Excel
+                </a>
                 <form method="post" action="{% url 'enviar_correo' %}"
                     style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
                     {% csrf_token %}
                     <div>
-                        <label
-                            style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--dusty-denim); margin-bottom: 4px;">Correos
-                            destino</label>
                         <input type="text" name="email_destino" placeholder="correo1@ejemplo.com, correo2@ejemplo.com" required
                             style="padding: 10px 12px; border: 1px solid var(--dusty-denim); border-radius: 10px; font-size: 14px; min-width: 350px;">
                     </div>
@@ -835,6 +973,7 @@
                 </form>
             </div>
         </div>
+
         <div class="filters-section">
             <div class="filters-header">
                 <svg viewBox="0 0 24 24">
@@ -872,93 +1011,461 @@
                     </svg>Limpiar</button>
             </div>
         </div>
-        <div class="tickets-section">
-            <div class="tickets-header">
-                <h2>Tickets para revisar</h2>
+
+        <!-- ========== PESTAÑAS ========== -->
+        <div class="tabs-wrapper">
+            <div class="tabs-header">
+                <button class="tab-btn active" data-tab="general">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    General
+                    <span class="badge-count">{{ alertas_resto_count|default:0 }}</span>
+                </button>
+                <button class="tab-btn" data-tab="nz-au">
+                    <svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
+                    NZ / Australia
+                    <span class="badge-count">{{ alertas_nz_au_count|default:0 }}</span>
+                </button>
+                <button class="tab-btn" data-tab="hardware-leaver">
+                    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    Hardware Leaver
+                    <span class="badge-count">{{ alertas_hardware_leaver_count|default:0 }}</span>
+                </button>
+                <button class="tab-btn" data-tab="local-apps">
+                    <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><line x1="8" y1="4" x2="8" y2="20"/><line x1="16" y1="4" x2="16" y2="20"/></svg>
+                    Local Apps NZ/AU
+                    <span class="badge-count">{{ alertas_local_apps_count|default:0 }}</span>
+                </button>
+                <button class="tab-btn" data-tab="sin-padre">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Sin Padre
+                    <span class="badge-count">{{ alertas_sin_padre_count|default:0 }}</span>
+                </button>
             </div>
-            <div id="ticketsContainer">
-                {% if todas_las_alertas %}
-                    {% for ticket in todas_las_alertas %}
-                    <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
-                        data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
-                        data-id="{{ ticket.padre.request_id }}">
-                        <div class="alerta-header" onclick="toggleBody(this)">
-                            <div class="alerta-info">
-                                <span class="severidad-badge {{ ticket.severidad }}">
-                                    {% if ticket.severidad == 'critica' %}CRÍTICA
-                                    {% elif ticket.severidad == 'alta' %}ALTA
-                                    {% elif ticket.severidad == 'media' %}MEDIA
-                                    {% elif ticket.severidad == 'baja' %}BAJA
-                                    {% else %}CERRAR{% endif %}
-                                </span>
-                                <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
-                                <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
-                                <span class="nombre-persona">{{ ticket.nombre }}</span>
-                                {% if ticket.hijos_pendientes > 0 %}
-                                <span class="hijos-abiertos-badge">{{ ticket.hijos_pendientes }} abiertos</span>
-                                {% endif %}
-                                {% if ticket.hijos_cerrados_count > 0 %}
-                                <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
-                                {% endif %}
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                                <span class="dias-badge {% if ticket.dias_abierto > 1 %}critico{% endif %}">{{ ticket.dias_abierto }} días</span>
-                                <span class="flecha">▼</span>
-                            </div>
-                        </div>
-                        <div class="alerta-body">
-                            <div class="description-box {% if ticket.severidad == 'critica' %}critica{% else %}pendiente{% endif %}">
-                                <strong>{{ ticket.mensaje }}</strong>
-                                {% if ticket.dias_limite %}<br><small>Límite: {{ ticket.dias_limite }} días</small>{% endif %}
-                            </div>
-                            <div class="subject-box">{{ ticket.subject_completo }}</div>
-                            {% if ticket.hijos %}
-                            <div class="hijos-table-wrapper">
-                                <table class="hijos-table">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Subject</th>
-                                            <th>Estado</th>
-                                            <th>Técnico</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for hijo in ticket.hijos %}
-                                        <tr>
-                                            <td><span class="hijo-id" onclick="copyId(event, '{{ hijo.request_id }}')">{{ hijo.request_id }}</span></td>
-                                            <td>{{ hijo.subject|truncatechars:60 }}</td>
-                                            <td class="estado-abierto">{{ hijo.request_status }}</td>
-                                            <td>{{ hijo.technician|default:"—" }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
+
+            <!-- Tab General -->
+            <div id="tab-general" class="tab-content active">
+                {% if cerrar_manual_resto %}
+                <div class="section-title">General - Listos para cerrar</div>
+                {% for ticket in cerrar_manual_resto %}
+                <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
+                    data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
+                    data-id="{{ ticket.padre.request_id }}">
+                    <div class="alerta-header" onclick="toggleBody(this)">
+                        <div class="alerta-info">
+                            <span class="severidad-badge {{ ticket.severidad }}">CERRAR</span>
+                            <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
+                            <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
+                            <span class="nombre-persona">{{ ticket.nombre }}</span>
+                            <span class="subject-preview" style="font-size: 11px; color: var(--dusty-denim); font-style: italic; flex: 1; min-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{{ ticket.subject_completo }}</span>
+                            {% if ticket.hijos_pendientes > 0 %}
+                            <span class="hijos-abiertos-badge">{{ ticket.hijos_pendientes }} abiertos</span>
                             {% endif %}
                             {% if ticket.hijos_cerrados_count > 0 %}
-                            <div class="cerrados-mensaje">
-                                <svg viewBox="0 0 24 24">
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                                {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) ya están cerrados
-                            </div>
+                            <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
                             {% endif %}
                         </div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <span class="dias-badge {% if ticket.dias_abierto > 1 %}critico{% endif %}">{{ ticket.dias_abierto }} días</span>
+                            <span class="flecha">▼</span>
+                        </div>
                     </div>
-                    {% endfor %}
+                    <div class="alerta-body">
+                        <div class="description-box cerrar">
+                            <strong>{{ ticket.mensaje }}</strong>
+                        </div>
+                        <div class="subject-box">{{ ticket.subject_completo }}</div>
+                        <div style="font-size: 12px; color: var(--dusty-denim); margin-top: 8px;">
+                            <strong>Fecha creación:</strong> {{ ticket.padre.created_time|date:"Y-m-d H:i" }}
+                        </div>
+                        {% if ticket.hijos %}
+                        <div class="hijos-table-wrapper">
+                            <table class="hijos-table">
+                                <thead><tr><th>ID</th><th>Subject</th><th>Estado</th><th>Técnico</th></tr></thead>
+                                <tbody>
+                                    {% for hijo in ticket.hijos %}
+                                    <tr>
+                                        <td><span class="hijo-id" onclick="copyId(event, '{{ hijo.request_id }}')">{{ hijo.request_id }}</span></td>
+                                        <td>{{ hijo.subject|truncatechars:60 }}</td>
+                                        <td class="estado-abierto">{{ hijo.request_status }}</td>
+                                        <td>{{ hijo.technician|default:"—" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% if ticket.hijos_cerrados_count > 0 %}
+                        <div class="cerrados-mensaje">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) ya están cerrados
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if alertas_resto %}
+                <div class="section-title">General - Tickets Pendientes</div>
+                {% for ticket in alertas_resto %}
+                <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
+                    data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
+                    data-id="{{ ticket.padre.request_id }}">
+                    <div class="alerta-header" onclick="toggleBody(this)">
+                        <div class="alerta-info">
+                            <span class="severidad-badge {{ ticket.severidad }}">
+                                {% if ticket.severidad == 'critica' %}CRÍTICA
+                                {% elif ticket.severidad == 'alta' %}ALTA
+                                {% elif ticket.severidad == 'media' %}MEDIA
+                                {% elif ticket.severidad == 'baja' %}BAJA
+                                {% else %}CERRAR{% endif %}
+                            </span>
+                            <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
+                            <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
+                            <span class="nombre-persona">{{ ticket.nombre }}</span>
+                            <span class="subject-preview" style="font-size: 11px; color: var(--dusty-denim); font-style: italic; flex: 1; min-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{{ ticket.subject_completo }}</span>
+                            {% if ticket.hijos_pendientes > 0 %}
+                            <span class="hijos-abiertos-badge">{{ ticket.hijos_pendientes }} abiertos</span>
+                            {% endif %}
+                            {% if ticket.hijos_cerrados_count > 0 %}
+                            <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <span class="dias-badge {% if ticket.dias_abierto > 1 %}critico{% endif %}">{{ ticket.dias_abierto }} días</span>
+                            <span class="flecha">▼</span>
+                        </div>
+                    </div>
+                    <div class="alerta-body">
+                        <div class="description-box {% if ticket.severidad == 'critica' %}critica{% else %}pendiente{% endif %}">
+                            <strong>{{ ticket.mensaje }}</strong>
+                            {% if ticket.dias_limite %}<br><small>Límite: {{ ticket.dias_limite }} días</small>{% endif %}
+                        </div>
+                        <div class="subject-box">{{ ticket.subject_completo }}</div>
+                        <div style="font-size: 12px; color: var(--dusty-denim); margin-top: 8px;">
+                            <strong>Fecha creación:</strong> {{ ticket.padre.created_time|date:"Y-m-d H:i" }}
+                        </div>
+                        {% if ticket.hijos %}
+                        <div class="hijos-table-wrapper">
+                            <table class="hijos-table">
+                                <thead><tr><th>ID</th><th>Subject</th><th>Estado</th><th>Técnico</th></tr></thead>
+                                <tbody>
+                                    {% for hijo in ticket.hijos %}
+                                    <tr>
+                                        <td><span class="hijo-id" onclick="copyId(event, '{{ hijo.request_id }}')">{{ hijo.request_id }}</span></td>
+                                        <td>{{ hijo.subject|truncatechars:60 }}</td>
+                                        <td class="estado-abierto">{{ hijo.request_status }}</td>
+                                        <td>{{ hijo.technician|default:"—" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% if ticket.hijos_cerrados_count > 0 %}
+                        <div class="cerrados-mensaje">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) ya están cerrados
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if not cerrar_manual_resto and not alertas_resto %}
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <p>No hay tickets en General</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab NZ / Australia -->
+            <div id="tab-nz-au" class="tab-content">
+                {% if cerrar_manual_nz_au %}
+                <div class="section-title">✅ 🇳🇿🇦🇺 Listos para cerrar (NZ/AU)</div>
+                {% for ticket in cerrar_manual_nz_au %}
+                <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
+                    data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
+                    data-id="{{ ticket.padre.request_id }}">
+                    <div class="alerta-header" onclick="toggleBody(this)">
+                        <div class="alerta-info">
+                            <span class="severidad-badge {{ ticket.severidad }}">CERRAR</span>
+                            <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
+                            <span class="region-badge">NZ / AU</span>
+                            <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
+                            <span class="nombre-persona">{{ ticket.nombre }}</span>
+                            <span class="subject-preview" style="font-size: 11px; color: var(--dusty-denim); font-style: italic; flex: 1; min-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{{ ticket.subject_completo }}</span>
+                            {% if ticket.hijos_pendientes > 0 %}
+                            <span class="hijos-abiertos-badge">{{ ticket.hijos_pendientes }} abiertos</span>
+                            {% endif %}
+                            {% if ticket.hijos_cerrados_count > 0 %}
+                            <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <span class="dias-badge">{{ ticket.dias_abierto }} días</span>
+                            <span class="flecha">▼</span>
+                        </div>
+                    </div>
+                    <div class="alerta-body">
+                        <div class="description-box cerrar">
+                            <strong>{{ ticket.mensaje }}</strong>
+                        </div>
+                        <div class="subject-box">{{ ticket.subject_completo }}</div>
+                        <div style="font-size: 12px; color: var(--dusty-denim); margin-top: 8px;">
+                            <strong>Fecha creación:</strong> {{ ticket.padre.created_time|date:"Y-m-d H:i" }}
+                        </div>
+                        {% if ticket.hijos %}
+                        <div class="hijos-table-wrapper">
+                            <table class="hijos-table">
+                                <thead><tr><th>ID</th><th>Subject</th><th>Estado</th><th>Técnico</th></tr></thead>
+                                <tbody>
+                                    {% for hijo in ticket.hijos %}
+                                    <tr>
+                                        <td><span class="hijo-id" onclick="copyId(event, '{{ hijo.request_id }}')">{{ hijo.request_id }}</span></td>
+                                        <td>{{ hijo.subject|truncatechars:60 }}</td>
+                                        <td class="estado-abierto">{{ hijo.request_status }}</td>
+                                        <td>{{ hijo.technician|default:"—" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% if ticket.hijos_cerrados_count > 0 %}
+                        <div class="cerrados-mensaje">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) ya están cerrados
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if alertas_nz_au %}
+                <div class="section-title">🇳🇿🇦🇺 NZ/Australia - Tickets Pendientes</div>
+                {% for ticket in alertas_nz_au %}
+                <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
+                    data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
+                    data-id="{{ ticket.padre.request_id }}">
+                    <div class="alerta-header" onclick="toggleBody(this)">
+                        <div class="alerta-info">
+                            <span class="severidad-badge {{ ticket.severidad }}">MEDIA</span>
+                            <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
+                            <span class="region-badge">NZ / AU</span>
+                            <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
+                            <span class="nombre-persona">{{ ticket.nombre }}</span>
+                            <span class="subject-preview" style="font-size: 11px; color: var(--dusty-denim); font-style: italic; flex: 1; min-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{{ ticket.subject_completo }}</span>
+                            {% if ticket.hijos_pendientes > 0 %}
+                            <span class="hijos-abiertos-badge">{{ ticket.hijos_pendientes }} abiertos</span>
+                            {% endif %}
+                            {% if ticket.hijos_cerrados_count > 0 %}
+                            <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <span class="dias-badge">{{ ticket.dias_abierto }} días</span>
+                            <span class="flecha">▼</span>
+                        </div>
+                    </div>
+                    <div class="alerta-body">
+                        <div class="description-box pendiente">
+                            <strong>{{ ticket.mensaje }}</strong>
+                            <br><small style="opacity:0.8">Región NZ/AU: Límite de 3 días</small>
+                        </div>
+                        <div class="subject-box">{{ ticket.subject_completo }}</div>
+                        <div style="font-size: 12px; color: var(--dusty-denim); margin-top: 8px;">
+                            <strong>Fecha creación:</strong> {{ ticket.padre.created_time|date:"Y-m-d H:i" }}
+                        </div>
+                        {% if ticket.hijos %}
+                        <div class="hijos-table-wrapper">
+                            <table class="hijos-table">
+                                <thead><tr><th>ID</th><th>Subject</th><th>Estado</th><th>Técnico</th></tr></thead>
+                                <tbody>
+                                    {% for hijo in ticket.hijos %}
+                                    <tr>
+                                        <td><span class="hijo-id" onclick="copyId(event, '{{ hijo.request_id }}')">{{ hijo.request_id }}</span></td>
+                                        <td>{{ hijo.subject|truncatechars:60 }}</td>
+                                        <td class="estado-abierto">{{ hijo.request_status }}</td>
+                                        <td>{{ hijo.technician|default:"—" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% if ticket.hijos_cerrados_count > 0 %}
+                        <div class="cerrados-mensaje">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) ya están cerrados
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if not cerrar_manual_nz_au and not alertas_nz_au %}
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <p>No hay tickets en NZ / Australia</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab Hardware Leaver -->
+            <div id="tab-hardware-leaver" class="tab-content">
+                {% if alertas_hardware_leaver %}
+                <div class="section-title">Tickets de Hardware para Leaver</div>
+                {% for ticket in alertas_hardware_leaver %}
+                <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
+                    data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
+                    data-id="{{ ticket.padre.request_id }}">
+                    <div class="alerta-header" onclick="toggleBody(this)">
+                        <div class="alerta-info">
+                            <span class="severidad-badge {{ ticket.severidad }}">CERRAR</span>
+                            <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
+                            <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
+                            <span class="nombre-persona">{{ ticket.nombre }}</span>
+                            <span class="subject-preview" style="font-size: 11px; color: var(--dusty-denim); font-style: italic; flex: 1; min-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{{ ticket.subject_completo }}</span>
+                            {% if ticket.hijos_cerrados_count > 0 %}
+                            <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <span class="dias-badge">{{ ticket.dias_abierto }} días</span>
+                            <span class="flecha">▼</span>
+                        </div>
+                    </div>
+                    <div class="alerta-body">
+                        <div class="description-box pendiente">
+                            <strong>{{ ticket.mensaje }}</strong>
+                        </div>
+                        <div class="subject-box">{{ ticket.subject_completo }}</div>
+                        <div style="font-size: 12px; color: var(--dusty-denim); margin-top: 8px;">
+                            <strong>Fecha creación:</strong> {{ ticket.padre.created_time|date:"Y-m-d H:i" }}
+                        </div>
+                        {% if ticket.hijos_cerrados_count > 0 %}
+                        <div class="cerrados-mensaje">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) cerrados
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
                 {% else %}
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="8" x2="12" y2="12" />
-                            <line x1="12" y1="16" x2="12.01" y2="16" />
-                        </svg>
-                        <p>No hay tickets pendientes</p>
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <p>No hay tickets de Hardware Leaver</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab Local Apps NZ/AU -->
+            <div id="tab-local-apps" class="tab-content">
+                {% if alertas_local_apps %}
+                <div class="section-title">Local Apps - Nueva Zelanda & Australia</div>
+                {% for ticket in alertas_local_apps %}
+                <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
+                    data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
+                    data-id="{{ ticket.padre.request_id }}">
+                    <div class="alerta-header" onclick="toggleBody(this)">
+                        <div class="alerta-info">
+                            <span class="severidad-badge {{ ticket.severidad }}">CERRAR</span>
+                            <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
+                            <span class="region-badge">NZ/AU</span>
+                            <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
+                            <span class="nombre-persona">{{ ticket.nombre }}</span>
+                            <span class="subject-preview" style="font-size: 11px; color: var(--dusty-denim); font-style: italic; flex: 1; min-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{{ ticket.subject_completo }}</span>
+                            {% if ticket.hijos_cerrados_count > 0 %}
+                            <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <span class="dias-badge">{{ ticket.dias_abierto }} días</span>
+                            <span class="flecha">▼</span>
+                        </div>
                     </div>
+                    <div class="alerta-body">
+                        <div class="description-box pendiente">
+                            <strong>{{ ticket.mensaje }}</strong>
+                            <br><small style="opacity:0.8">Región NZ/AU: Límite de 3 días</small>
+                        </div>
+                        <div class="subject-box">{{ ticket.subject_completo }}</div>
+                        <div style="font-size: 12px; color: var(--dusty-denim); margin-top: 8px;">
+                            <strong>Fecha creación:</strong> {{ ticket.padre.created_time|date:"Y-m-d H:i" }}
+                        </div>
+                        {% if ticket.hijos_cerrados_count > 0 %}
+                        <div class="cerrados-mensaje">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) cerrados
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <p>No hay tickets de Local Apps en NZ/AU</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab Sin Padre -->
+            <div id="tab-sin-padre" class="tab-content">
+                {% if alertas_sin_padre %}
+                <div class="section-title">Tickets sin padre linkeado</div>
+                {% for ticket in alertas_sin_padre %}
+                <div class="alerta-card" data-tipo="{{ ticket.tipo_jml }}" data-tipo-alerta="{{ ticket.tipo_alerta }}"
+                    data-severidad="{{ ticket.severidad }}" data-fecha="{{ ticket.padre.created_time|date:'Y-m-d' }}"
+                    data-id="{{ ticket.padre.request_id }}">
+                    <div class="alerta-header" onclick="toggleBody(this)">
+                        <div class="alerta-info">
+                            <span class="severidad-badge {{ ticket.severidad }}">CERRAR</span>
+                            <span class="tipo-badge tipo-{{ ticket.tipo_jml }}">{{ ticket.tipo_jml }}</span>
+                            <span class="ticket-id" onclick="copyId(event, '{{ ticket.padre.request_id }}')">{{ ticket.padre.request_id }}</span>
+                            <span class="nombre-persona">{{ ticket.nombre }}</span>
+                            <span class="subject-preview" style="font-size: 11px; color: var(--dusty-denim); font-style: italic; flex: 1; min-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{{ ticket.subject_completo }}</span>
+                            {% if ticket.hijos_cerrados_count > 0 %}
+                            <span class="hijos-cerrados-badge">{{ ticket.hijos_cerrados_count }} cerrados</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <span class="dias-badge">{{ ticket.dias_abierto }} días</span>
+                            <span class="flecha">▼</span>
+                        </div>
+                    </div>
+                    <div class="alerta-body">
+                        <div class="description-box pendiente">
+                            <strong>{{ ticket.mensaje }}</strong>
+                        </div>
+                        <div class="subject-box">{{ ticket.subject_completo }}</div>
+                        <div style="font-size: 12px; color: var(--dusty-denim); margin-top: 8px;">
+                            <strong>Fecha creación:</strong> {{ ticket.padre.created_time|date:"Y-m-d H:i" }}
+                        </div>
+                        {% if ticket.hijos_cerrados_count > 0 %}
+                        <div class="cerrados-mensaje">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            {{ ticket.hijos_cerrados_count }} ticket(s) hijo(s) cerrados
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <p>No hay tickets sin padre</p>
+                </div>
                 {% endif %}
             </div>
         </div>
+        <!-- ========== FIN PESTAÑAS ========== -->
     </div>
     <div class="toast" id="toast">
         <svg viewBox="0 0 24 24">
@@ -967,6 +1474,18 @@
         <span>ID copiado</span>
     </div>
     <script>
+        // ========== PESTAÑAS ==========
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.getAttribute('data-tab');
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                const target = document.getElementById(`tab-${tabId}`);
+                if (target) target.classList.add('active');
+            });
+        });
+
         function toggleBody(header) {
             const body = header.nextElementSibling;
             const flecha = header.querySelector('.flecha');
@@ -988,7 +1507,12 @@
             const fechaDesde = document.getElementById('fechaDesde').value;
             const fechaHasta = document.getElementById('fechaHasta').value;
             const soloCerrar = document.getElementById('cerrarFilter').value;
-            const cards = document.querySelectorAll('.alerta-card');
+
+            // Aplicar filtros SOLO a las tarjetas dentro de la pestaña activa
+            const activeTab = document.querySelector('.tab-content.active');
+            if (!activeTab) return;
+
+            const cards = activeTab.querySelectorAll('.alerta-card');
             cards.forEach(card => {
                 const tipoCard = card.querySelector('.tipo-badge')?.innerText || '';
                 const severidadCard = card.querySelector('.severidad-badge')?.classList[1] || '';
@@ -1000,17 +1524,14 @@
                 if (tipo && tipoCard !== tipo) show = false;
                 if (status && severidadCard !== status) show = false;
                 if (soloCerrar === 'si' && !isCerrar) show = false;
-                // Filtrado por fecha (data-fecha en formato YYYY-MM-DD)
                 const fechaCard = card.dataset.fecha || '';
-                if (fechaDesde && fechaCard) {
-                    if (fechaCard < fechaDesde) show = false;
-                }
-                if (fechaHasta && fechaCard) {
-                    if (fechaCard > fechaHasta) show = false;
-                }
+                if (fechaDesde && fechaCard && fechaCard < fechaDesde) show = false;
+                if (fechaHasta && fechaCard && fechaCard > fechaHasta) show = false;
                 card.style.display = show ? '' : 'none';
             });
         }
+
+        // Los filtros solo funcionan en la pestaña activa
         document.getElementById('searchInput').addEventListener('input', applyFilters);
         document.getElementById('typeFilter').addEventListener('change', applyFilters);
         document.getElementById('statusFilter').addEventListener('change', applyFilters);
@@ -1024,7 +1545,17 @@
             document.getElementById('cerrarFilter').value = '';
             document.getElementById('fechaDesde').value = '';
             document.getElementById('fechaHasta').value = '';
-            document.querySelectorAll('.alerta-card').forEach(card => card.style.display = '');
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab) {
+                activeTab.querySelectorAll('.alerta-card').forEach(card => card.style.display = '');
+            }
+        });
+
+        // Re-aplicar filtros al cambiar de pestaña
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setTimeout(applyFilters, 50);
+            });
         });
     </script>
 </body>
