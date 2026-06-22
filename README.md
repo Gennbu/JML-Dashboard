@@ -17,6 +17,7 @@ Un dashboard para monitoreo y cierre manual de tickets de Joiners, Movers y Leav
 
 ## Requisitos Previos
 
+- IDE como VS Code, Cursor, Trae, Etc.
 - Python 3.10+
 - Pip (gestor de paquetes de Python)
 - Cuenta en [Render](https://render.com/)
