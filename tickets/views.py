@@ -72,6 +72,8 @@ def normalizar_request_id(value):
 
 def es_hardware_leaver_subject(subject):
     subject_normalizado = normalizar_subject(subject)
+    if 'joiner' in subject_normalizado or 'mover' in subject_normalizado:
+        return False
     patrones_hardware = [
         'asset tablet leaver request',
         'equipment return leaver',
@@ -83,7 +85,6 @@ def es_hardware_leaver_subject(subject):
         'contractor laptop return',
         'asset retrieval leaver request',
         'contractor laptop requirement',
-        'laptop requirement',
         'asset ip telephony leaver request',
         'asset laptop leaver request',
         'asset desktop leaver request',
