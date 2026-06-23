@@ -60,6 +60,16 @@ def normalizar_subject(subject):
     return re.sub(r'\s+', ' ', normalized).strip()
 
 
+def normalizar_request_id(value):
+    if value is None:
+        return ''
+    normalized = str(value).replace('\xa0', ' ').strip()
+    normalized = re.sub(r'\s+', '', normalized)
+    if normalized.lower().endswith('.0'):
+        normalized = normalized[:-2]
+    return normalized.upper()
+
+
 def es_hardware_leaver_subject(subject):
     subject_normalizado = normalizar_subject(subject)
     patrones_hardware = [
@@ -165,31 +175,45 @@ def obtener_alertas_padre_listos_para_cerrar():
     ).exclude(request_status__in=estados_busqueda)
     
     # Limpiamos los IDs para el match
-    padres_con_hijos_abiertos = set(str(lid).strip() for lid in hijos_abiertos.values_list('linked_request_id', flat=True) if lid)
+    padres_con_hijos_abiertos = {
+        normalizar_request_id(lid)
+        for lid in hijos_abiertos.values_list('linked_request_id', flat=True)
+        if normalizar_request_id(lid)
+    }
     
     # Padres con al menos un hijo
     todos_los_hijos = Ticket.objects.exclude(
         Q(linked_request_id__isnull=True) | Q(linked_request_id='')
     )
-    padres_con_hijos = set(str(lid).strip() for lid in todos_los_hijos.values_list('linked_request_id', flat=True) if lid)
+    padres_con_hijos = {
+        normalizar_request_id(lid)
+        for lid in todos_los_hijos.values_list('linked_request_id', flat=True)
+        if normalizar_request_id(lid)
+    }
     
     # Padres listos = tienen hijos pero ninguno abierto
     padres_listos_ids = padres_con_hijos - padres_con_hijos_abiertos
-    padres_listos = padres_abiertos.filter(request_id__in=padres_listos_ids)
+    padres_listos = [
+        padre for padre in padres_abiertos
+        if normalizar_request_id(padre.request_id) in padres_listos_ids
+    ]
     
     # Conteo de hijos cerrados por padre
-    conteos = Ticket.objects.filter(
-        linked_request_id__in=padres_listos_ids,
-        request_status__in=estados_busqueda
+    conteos = Ticket.objects.filter(request_status__in=estados_busqueda).exclude(
+        Q(linked_request_id__isnull=True) | Q(linked_request_id='')
     ).values('linked_request_id').annotate(total=Count('id'))
-    
-    hijos_map = {str(item['linked_request_id']).strip(): item['total'] for item in conteos}
+
+    hijos_map = {
+        normalizar_request_id(item['linked_request_id']): item['total']
+        for item in conteos
+        if normalizar_request_id(item['linked_request_id']) in padres_listos_ids
+    }
     
     cerrar_manual_resto = []
     cerrar_manual_nz_au = []
     
     for padre in padres_listos:
-        pid = str(padre.request_id).strip()
+        pid = normalizar_request_id(padre.request_id)
         hijos_cerrados_count = hijos_map.get(pid, 0)
         
         dias_abierto = 0
@@ -488,7 +512,7 @@ def upload_csv(request):
                 tickets_to_create = []
                 # El loop ahora solo crea objetos, no procesa datos pesados
                 for row in chunk.itertuples(index=False):
-                    rid = str(getattr(row, col_id, '')).strip()
+                    rid = normalizar_request_id(getattr(row, col_id, ''))
                     if not rid or rid.lower() in ['nan', 'requestid', '']:
                         continue
                         
@@ -503,7 +527,7 @@ def upload_csv(request):
                     if pd.isna(lid) or str(lid).lower() in ['nan', '', 'none']:
                         lid = None
                     else:
-                        lid = str(lid).strip()
+                        lid = normalizar_request_id(lid)
                         if lid == rid: lid = None
 
                     subject = sub+ str(getattr(row, 'Subject', '' )).strip()
@@ -610,11 +634,15 @@ def alertas(request):
 
         hijos_por_padre = defaultdict(list)
         for hijo in hijos_qs:
-            lid = str(hijo.linked_request_id).strip()
-            if lid != str(hijo.request_id).strip():
+            lid = normalizar_request_id(hijo.linked_request_id)
+            if lid and lid != normalizar_request_id(hijo.request_id):
                 hijos_por_padre[lid].append(hijo)
 
-        padres_ids = set(padres_qs.values_list('request_id', flat=True))
+        todos_los_request_ids = {
+            normalizar_request_id(request_id)
+            for request_id in Ticket.objects.values_list('request_id', flat=True)
+            if normalizar_request_id(request_id)
+        }
         hoy = timezone.now().date()
 
         alertas_nz_au = []
@@ -625,9 +653,11 @@ def alertas(request):
         alertas_local_apps_nz_au = []
         alertas_sin_padre = []
 
-        hijos_con_padre_inexistente = hijos_qs.exclude(linked_request_id__in=padres_ids)
+        for hijo in hijos_qs:
+            linked_id_normalizado = normalizar_request_id(hijo.linked_request_id)
+            if not linked_id_normalizado or linked_id_normalizado in todos_los_request_ids:
+                continue
 
-        for hijo in hijos_con_padre_inexistente:
             dias_abierto = 0
             if hijo.created_time:
                 fecha_creacion = hijo.created_time.date() if hasattr(hijo.created_time, 'date') else hijo.created_time
@@ -662,7 +692,7 @@ def alertas(request):
                 alertas_sin_padre.append(alerta_huerfana)
 
         for padre in padres_qs:
-            pid = str(padre.request_id).strip()
+            pid = normalizar_request_id(padre.request_id)
             todos_hijos = hijos_por_padre.get(pid, [])
 
             hijos_abiertos = []
