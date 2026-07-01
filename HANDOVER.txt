@@ -108,3 +108,4 @@ Variables requeridas:
 IMPORTANTE:
 - La cuenta final de Brevo no deberia quedar asociada a una cuenta personal del practicante.
 - La empresa deberia definir la cuenta propietaria, remitente oficial y API key definitiva.
+
