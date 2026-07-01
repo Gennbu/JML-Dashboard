@@ -1,0 +1,104 @@
+JML DASHBOARD - GUIA OPERATIVA
+
+1. PARA QUE SIRVE
+
+Esta aplicacion permite revisar tickets Joiner, Mover y Leaver a partir de un CSV exportado desde ServiceDesk.
+
+Su objetivo principal es detectar:
+- tickets padre abiertos con hijos ya cerrados,
+- tickets sin padre,
+- categorias especiales como Hardware Leaver,
+- y permitir exportar o enviar el resultado.
+
+
+2. FLUJO DE USO
+
+Paso 1:
+Entrar a la opcion de carga de CSV.
+
+Paso 2:
+Seleccionar el archivo exportado desde ServiceDesk.
+
+Paso 3:
+Si se quiere iniciar desde cero, marcar la opcion para limpiar base de datos antes de cargar.
+
+Paso 4:
+Esperar a que termine la carga.
+
+Paso 5:
+Entrar al dashboard de alertas.
+
+Paso 6:
+Revisar las pestanas:
+- General
+- NZ / Australia
+- Hardware Leaver
+- Local Apps NZ/AU
+- Sin Padre
+
+Paso 7:
+Si hace falta compartir resultados:
+- exportar Excel,
+- o enviar correo si la configuracion de Brevo esta activa.
+
+
+3. QUE SIGNIFICA CADA BLOQUE
+
+General:
+Casos normales fuera de NZ/Australia y fuera de categorias especiales.
+
+NZ / Australia:
+Tickets asociados a esa region, con reglas de prioridad diferentes en algunos casos.
+
+Hardware Leaver:
+Casos especiales de hardware que siguen una logica distinta.
+
+Local Apps NZ/AU:
+Casos de aplicaciones locales para NZ/Australia.
+
+Sin Padre:
+Tickets hijos cuyo padre no existe dentro de la data cargada localmente.
+
+
+4. COSAS IMPORTANTES A SABER
+
+- Si un ticket no fue exportado en el CSV, no aparecera en el dashboard.
+- Si el reporte de ServiceDesk esta filtrado de forma incompleta, el dashboard tambien quedara incompleto.
+- El sistema no consulta ServiceDesk en tiempo real.
+
+
+5. CUANDO USAR LIMPIAR BASE DE DATOS
+
+Usar cuando:
+- se quiere reemplazar completamente la data cargada,
+- se esta trabajando desde cero,
+- o se detecta que la data vieja ya no sirve.
+
+No usar cuando:
+- se quiere hacer carga acumulativa de periodos consecutivos,
+- por ejemplo mayo y luego junio, para mantener padres e hijos relacionados entre meses.
+
+
+6. SI NO APARECEN TICKETS ESPERADOS
+
+Revisar:
+- si el ticket realmente viene en el CSV,
+- si el filtro del reporte lo esta excluyendo,
+- si el ticket pertenece a una categoria especial,
+- o si el padre no fue cargado localmente.
+
+
+7. SI NO SE ENVIAN CORREOS
+
+Revisar:
+- remitente verificado en Brevo,
+- API key valida,
+- variables de entorno configuradas,
+- y logs del servidor.
+
+
+8. SI SE PIERDEN DATOS
+
+Si se usa SQLite en entornos no persistentes, los datos pueden perderse despues de redeploys o reinicios.
+
+Para persistencia real se recomienda PostgreSQL.

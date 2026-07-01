@@ -1,0 +1,54 @@
+JML DASHBOARD - CHECKLIST DE ENTREGA
+
+1. FUNCIONALIDAD
+
+[ ] La carga de CSV funciona correctamente.
+[ ] El dashboard muestra alertas correctamente.
+[ ] La clasificacion por pestanas funciona.
+[ ] La seccion de listos para cerrar funciona.
+[ ] La exportacion a Excel funciona.
+[ ] El flujo de correo esta probado o documentado.
+
+
+2. CONFIGURACION
+
+[ ] Existe archivo .env local o variables definidas para el ambiente.
+[ ] SECRET_KEY ya no esta hardcodeada en codigo.
+[ ] ALLOWED_HOSTS esta definido para el ambiente.
+[ ] Si se usa Brevo, el remitente esta verificado.
+[ ] Si se usa Brevo, la API key esta vigente.
+
+
+3. BASE DE DATOS
+
+[ ] Se definio si la entrega sera con SQLite temporal o PostgreSQL.
+[ ] Si sera con PostgreSQL, DATABASE_URL esta lista.
+[ ] Se explico el riesgo de persistencia si se deja SQLite en Render.
+
+
+4. DOCUMENTACION
+
+[ ] README actualizado.
+[ ] HANDOVER.txt entregado.
+[ ] OPERACION.txt entregado.
+[ ] ACCESOS.txt preparado para completar con responsables.
+[ ] Lista de pendientes futuros incluida.
+
+
+5. ENTREGA FORMAL
+
+[ ] Se entrega el repositorio.
+[ ] Se entrega la documentacion.
+[ ] Se explican limitaciones del CSV.
+[ ] Se aclara el estado del correo.
+[ ] Se aclara el estado de la base de datos.
+[ ] Se deja claro que decisiones deben tomar ellos.
+
+
+6. COSAS QUE DEBERIAN DEFINIR ELLOS
+
+[ ] Cuenta final de Brevo o servicio de correo equivalente.
+[ ] Cuenta o ambiente final de despliegue.
+[ ] Base de datos final.
+[ ] Responsable de soporte.
+[ ] Responsable de accesos y credenciales.

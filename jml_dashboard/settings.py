@@ -1,6 +1,8 @@
 import os
-from dotenv import load_dotenv
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Lee el .env que está EN LA RAÍZ DEL PROYECTO
@@ -16,13 +18,15 @@ except ImportError:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-pehg0gi8uy3=br7$!kw1%$c87o98(v3j@%w)v@7&!^5$3!z510'
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-local-dev-only')
+if not DEBUG and SECRET_KEY == 'django-insecure-local-dev-only':
+    raise ImproperlyConfigured('Define SECRET_KEY en las variables de entorno para ambientes no locales.')
+
+allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '.onrender.com,localhost,127.0.0.1')
+ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
 
 
 # Application definition

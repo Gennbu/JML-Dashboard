@@ -1,0 +1,152 @@
+JML DASHBOARD - HANDOVER
+
+1. OBJETIVO DEL PROYECTO
+
+Este proyecto fue construido para apoyar el monitoreo manual de tickets Joiner, Mover y Leaver exportados desde ServiceDesk en formato CSV.
+
+La necesidad principal es identificar tickets padre que siguen abiertos aunque sus tickets hijos ya se encuentren cerrados, resueltos, cancelados o completados.
+
+El sistema tambien permite:
+- clasificar alertas por categorias funcionales,
+- identificar tickets sin padre,
+- separar casos especiales como Hardware Leaver,
+- exportar resultados a Excel,
+- y enviar un reporte por correo usando Brevo.
+
+
+2. ALCANCE ACTUAL
+
+El sistema actual funciona con carga manual de CSV.
+
+No existe integracion automatica via API con ServiceDesk.
+
+La aplicacion:
+- carga el CSV,
+- normaliza columnas e IDs,
+- guarda tickets en base de datos,
+- clasifica alertas,
+- muestra dashboard,
+- permite exportar Excel,
+- y permite enviar correo si Brevo esta configurado.
+
+
+3. LIMITACIONES IMPORTANTES
+
+- Si un ticket no viene en el CSV, el dashboard no puede detectarlo.
+- La precision del resultado depende del filtro usado en ServiceDesk al exportar.
+- El sistema esta pensado para cargas manuales acumulativas por periodo.
+- Algunos tickets de Hardware Leaver tienen una logica especial distinta a otros flujos.
+- En ambientes efimeros o free, SQLite puede perder persistencia tras reinicios o redeploys.
+
+
+4. FLUJO GENERAL
+
+1. Exportar CSV desde ServiceDesk.
+2. Subir archivo en /upload/.
+3. Procesar y guardar tickets.
+4. Revisar alertas en /alertas/.
+5. Exportar Excel si se requiere.
+6. Enviar correo si Brevo esta configurado.
+
+
+5. ESTRUCTURA DEL CODIGO
+
+La app principal es "tickets" y fue reorganizada asi:
+
+- tickets/views.py
+  Endpoints HTTP y respuestas Django.
+
+- tickets/constants.py
+  Estados, patrones y valores fijos.
+
+- tickets/utils.py
+  Helpers reutilizables para normalizacion y parsing.
+
+- tickets/services/alerts.py
+  Logica de negocio del dashboard y clasificacion.
+
+- tickets/services/importers.py
+  Carga y procesamiento del CSV por chunks.
+
+- tickets/services/reports.py
+  Envio de correo por Brevo y exportacion Excel.
+
+
+6. DEPENDENCIAS PRINCIPALES
+
+- Django 5.2.7
+- pandas
+- requests
+- openpyxl
+- python-dotenv
+- gunicorn
+- dj-database-url
+- psycopg2-binary
+
+
+7. BASE DE DATOS
+
+Modo actual:
+- SQLite por defecto.
+
+Soporte disponible:
+- PostgreSQL si se define DATABASE_URL.
+
+Recomendacion:
+- Para entrega rapida o uso local: SQLite sirve.
+- Para servidor interno, varios usuarios o persistencia seria: usar PostgreSQL.
+
+
+8. CORREOS / BREVO
+
+El proyecto envia correo por API HTTP de Brevo.
+
+Variables requeridas:
+- EMAIL_HOST_USER
+- EMAIL_HOST_PASSWORD
+
+IMPORTANTE:
+- La cuenta final de Brevo no deberia quedar asociada a una cuenta personal del practicante.
+- La empresa deberia definir la cuenta propietaria, remitente oficial y API key definitiva.
+
+
+9. QUE DEBERIA DEFINIR LA EMPRESA
+
+- Donde se hospedara la app finalmente.
+- Si seguira en Render o pasara a servidor interno.
+- Si la base final sera SQLite temporal o PostgreSQL.
+- Quien administrara el envio de correos.
+- Quien sera responsable de accesos y soporte.
+
+
+10. ESTADO DE ENTREGA RECOMENDADO
+
+El proyecto puede entregarse si:
+- carga CSV correctamente,
+- clasifica alertas correctamente,
+- exporta Excel,
+- el envio de correo esta probado o documentado,
+- README esta actualizado,
+- y queda claro el estado de base de datos y correos.
+
+
+11. PENDIENTES FUTUROS
+
+- Integracion por API con ServiceDesk.
+- Migracion definitiva a PostgreSQL.
+- Uso de cuenta corporativa para Brevo o reemplazo por servicio de correo empresarial.
+- Pruebas automatizadas.
+- Despliegue interno definitivo.
+
+
+12. RECOMENDACION FINAL
+
+Entregar este proyecto no deberia significar solo pasar el repositorio.
+
+La entrega ideal incluye:
+- repositorio,
+- README,
+- handover,
+- guia operativa,
+- documento de accesos,
+- y lista de pendientes conocidos.

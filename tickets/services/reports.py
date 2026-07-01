@@ -14,14 +14,12 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
 
     if not destinatario_email:
         destinatario_email = settings.DEFAULT_FROM_EMAIL
-    print(f"  → Destinatarios recibidos (raw): '{destinatario_email}'")
 
     api_key = obtener_brevo_api_key()
     if not api_key:
         print("  → ERROR: NO HAY API KEY!")
         return False, 'Falta la API Key de Brevo.'
 
-    print(f"  → API Key (primeros 10): '{api_key[:10] if len(api_key) >= 10 else api_key}...'")
     print(f"  → Remitente configurado: '{settings.DEFAULT_FROM_EMAIL}'")
 
     try:
@@ -34,7 +32,7 @@ def enviar_correo_tickets_cerrar(destinatario_email=None):
         print(f"  → Mostrando {len(tickets_cerrar)} tickets en el correo")
 
         destinatarios = parse_destinatarios_email(destinatario_email)
-        print(f"  → Destinatarios validados: {destinatarios}")
+        print(f"  → Destinatarios validados: {len(destinatarios)}")
         if not destinatarios:
             return False, 'No se proporcionó ningún correo válido.'
 
@@ -122,11 +120,9 @@ def generar_excel_listos_cerrar():
 
 def obtener_brevo_api_key():
     if hasattr(settings, 'BREVO_API_KEY') and settings.BREVO_API_KEY:
-        print("  → Encontrada BREVO_API_KEY en settings")
         return settings.BREVO_API_KEY
 
     if hasattr(settings, 'EMAIL_HOST_PASSWORD') and settings.EMAIL_HOST_PASSWORD:
-        print("  → Usando EMAIL_HOST_PASSWORD como API Key")
         return settings.EMAIL_HOST_PASSWORD
 
     return None
