@@ -203,17 +203,13 @@ DATABASE_URL=
 4. Exportar Excel si se necesita.
 5. Enviar correo si el flujo de Brevo esta configurado.
 
-## Entrega / Handover
+### 1. Conetenido tecnico
 
-Para dejar el proyecto listo a otra persona, se recomienda entregar:
-
-### 1. README tecnico
-
-- Este archivo, actualizado.
+- Readme sobre la instalación del proyecto.
 
 ### 2. Documento de handover
 
-Debe incluir:
+Contiene:
 
 - objetivo del proyecto,
 - flujo funcional,
@@ -223,8 +219,6 @@ Debe incluir:
 - y responsables de accesos.
 
 ### 3. Documento operativo corto
-
-Ideal para alguien no tecnico o semitecnico:
 
 - como subir CSV,
 - como interpretar pestañas,
@@ -257,13 +251,6 @@ Ejemplos:
 
 La configuracion final de correos deberia quedar del lado de la empresa o del area encargada de infraestructura/comunicaciones.
 
-Tu responsabilidad ideal en entrega seria:
-
-- dejar documentado como funciona,
-- indicar que variables necesita,
-- mostrar que ya opera con Brevo,
-- y pedir que ellos definan la cuenta final, el remitente oficial y la API key definitiva.
-
 ## Solucion de Problemas
 
 ### No carga tickets
@@ -291,14 +278,4 @@ Tu responsabilidad ideal en entrega seria:
 
 - El sistema procesa por chunks de `500` filas para reducir carga de memoria.
 
-## Estado Recomendado para Entrega
-
-El proyecto puede considerarse entregable si se cumple esto:
-
-- carga CSV correctamente,
-- clasifica alertas correctamente,
-- exporta Excel,
-- el flujo de correo esta probado o claramente documentado,
-- el README esta actualizado,
-- y queda claro si la base final sera SQLite temporal o PostgreSQL.
 
